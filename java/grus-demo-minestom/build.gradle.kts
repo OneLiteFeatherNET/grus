@@ -16,6 +16,11 @@ application {
     mainClass.set(mainClassName)
 }
 
+// The plain jar must not share the fat jar's file name, or shadow reads its own output as input.
+tasks.named<Jar>("jar") {
+    archiveClassifier.set("plain")
+}
+
 tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("")
     // Jackson is shaded and relocated so it cannot clash with anything else on the server class path.
