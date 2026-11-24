@@ -1,0 +1,16 @@
+[versions]
+jackson = "2.22.4"
+junit = "5.14.4"
+minestom = "2026.10.07-26.2"
+shadow = "9.6.1"
+
+[libraries]
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+minestom = { module = "net.minestom:minestom", version.ref = "minestom" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
