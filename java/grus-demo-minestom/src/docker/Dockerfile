@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25.0.3_9-jre
+FROM eclipse-temurin:25.0.5.1_2-jre
 
 RUN useradd -u 10001 -r -m grus \
  && mkdir -p /data /opt/grus \
