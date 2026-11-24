@@ -1,6 +1,7 @@
 package net.onelitefeather.grus.sdk;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.Map;
 
@@ -26,4 +27,17 @@ public record Instance(
         int players,
         int maxPlayers,
         Map<String, String> labels) {
+
+    /**
+     * Parses the data of an {@code instance.updated} event, which is the full instance JSON.
+     *
+     * @throws IllegalArgumentException when the payload does not match this shape
+     */
+    public static Instance from(GrusEvent event) {
+        try {
+            return Json.MAPPER.treeToValue(event.data(), Instance.class);
+        } catch (JsonProcessingException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("not an instance payload: " + event.type(), e);
+        }
+    }
 }
