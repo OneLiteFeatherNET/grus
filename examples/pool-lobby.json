@@ -1,0 +1,41 @@
+{
+  "role": "game",
+  "mode": "dynamic",
+  "driver": "kubernetes",
+  "image": "harbor.onelitefeather.dev/onelitefeather/grus-demo-minestom:IMAGE_TAG",
+  "env": {
+    "JAVA_TOOL_OPTIONS": "-XX:MaxRAMPercentage=75"
+  },
+  "secretEnv": [
+    {
+      "name": "VELOCITY_SECRET",
+      "secret": "grus-dev-secrets",
+      "key": "VELOCITY_SECRET"
+    }
+  ],
+  "resources": {
+    "memoryMiB": 512,
+    "cpu": "250m"
+  },
+  "port": 25565,
+  "templates": [
+    {
+      "name": "lobby-config",
+      "tag": "stable"
+    }
+  ],
+  "scaling": {
+    "min": 1,
+    "max": 4,
+    "buffer": 1,
+    "capacity": 20,
+    "targetUtilization": 0.8,
+    "scaleDownDelay": "2m",
+    "drainTimeout": "60s"
+  },
+  "lifecycle": {
+    "gracePeriod": "20s",
+    "heartbeatTimeout": "20s",
+    "startTimeout": "3m"
+  }
+}
