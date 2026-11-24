@@ -4,6 +4,7 @@ import net.minestom.server.MinecraftServer;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.PlayerDisconnectEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
+import net.onelitefeather.grus.sdk.Backoff;
 import net.onelitefeather.grus.sdk.GrusClient;
 import net.onelitefeather.grus.sdk.GrusConfig;
 import net.onelitefeather.grus.sdk.GrusException;
@@ -27,6 +28,8 @@ public final class GrusMinestom {
     /** Environment variable with the player capacity reported to Grus. */
     public static final String ENV_MAX_PLAYERS = "GRUS_MAX_PLAYERS";
     static final int DEFAULT_MAX_PLAYERS = 20;
+    /** Ready calls before giving up; with the default backoff this covers several minutes of controller outage. */
+    static final int READY_ATTEMPTS = 20;
 
     private static final System.Logger LOG = System.getLogger(GrusMinestom.class.getName());
 
@@ -66,16 +69,21 @@ public final class GrusMinestom {
 
     /**
      * Reports this instance as ready and starts the periodic status reports.
-     * A failed ready call is logged; the status reports still start, so the heartbeat continues.
+     * The ready call is retried in the background on a virtual thread, so a transient controller error
+     * does not leave the instance stuck in Starting. The status reports start right away.
      */
     public void ready() {
+        Thread.ofVirtual().name("grus-ready").start(this::reportReadyWithRetry);
+        reporter.start();
+    }
+
+    private void reportReadyWithRetry() {
         try {
-            client.ready();
+            client.readyWithRetry(Backoff.defaults(), READY_ATTEMPTS);
             LOG.log(System.Logger.Level.INFO, "Grus reported ready");
         } catch (GrusException e) {
             LOG.log(System.Logger.Level.WARNING, "Grus ready call failed with status {0}: {1}", e.status(), e.getMessage());
         }
-        reporter.start();
     }
 
     /** Stops the status reports. The server itself is not touched. */

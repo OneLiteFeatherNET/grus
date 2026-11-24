@@ -3,6 +3,7 @@ jackson = "2.23.0"
 junit = "5.14.4"
 minestom = "2026.10.07-26.2"
 shadow = "9.6.1"
+velocity = "4.3.1"
 
 [libraries]
 jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jackson" }
@@ -11,6 +12,7 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 minestom = { module = "net.minestom:minestom", version.ref = "minestom" }
+velocity-api = { module = "com.velocitypowered:velocity-api", version.ref = "velocity" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
