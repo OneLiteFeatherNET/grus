@@ -1,0 +1,18 @@
+apiVersion: v2
+name: grus
+description: Grus controller - minimal control plane that runs and scales game server instances as Kubernetes pods
+type: application
+# Both markers are rewritten by release-please, so the chart version and the
+# controller image it deploys come from the same release.
+version: "0.0.0" # x-release-please-version
+appVersion: "0.0.0" # x-release-please-version
+home: https://github.com/OneLiteFeatherNET/grus
+sources:
+  - https://github.com/OneLiteFeatherNET/grus
+maintainers:
+  - name: OneLiteFeather
+    url: https://onelitefeather.net
+keywords:
+  - grus
+  - minecraft
+  - control-plane

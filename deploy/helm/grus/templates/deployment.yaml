@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "grus.fullname" . }}
+  labels:
+    {{- include "grus.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # The data volume is ReadWriteOnce and holds a single-writer SQLite file. A RollingUpdate would start the new pod
+  # while the old one still holds the volume, so the old pod stops first.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "grus.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "grus.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # Changing the seed templates rolls the pod, so the new files are read at start.
+        checksum/seed: {{ toJson .Values.templates.seed | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "grus.fullname" . }}
+      automountServiceAccountToken: true
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "grus.podSecurity" . | nindent 6 }}
+      containers:
+        - name: controller
+          image: {{ include "grus.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - controller
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: GRUS_LISTEN
+              value: ":8080"
+            - name: GRUS_DB
+              value: /var/lib/grus/grus.db
+            - name: GRUS_TEMPLATES_DIR
+              value: /var/lib/grus/templates
+            {{- if .Values.templates.seed }}
+            - name: GRUS_TEMPLATE_SEED_DIR
+              value: /etc/grus/seed
+            {{- end }}
+            - name: GRUS_DRIVER
+              value: kubernetes
+            - name: GRUS_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GRUS_PUBLIC_URL
+              value: {{ include "grus.publicURL" . | quote }}
+            - name: GRUS_SELF_IMAGE
+              value: {{ include "grus.image" . | quote }}
+            - name: GRUS_IMAGE_PULL_SECRETS
+              value: {{ join "," .Values.instances.imagePullSecrets | quote }}
+            - name: GRUS_DEFAULT_PRIORITY_CLASS
+              value: {{ .Values.instances.priorityClassName | quote }}
+            - name: GRUS_NODE_SELECTOR
+              value: {{ include "grus.keyValueList" .Values.instances.nodeSelector | quote }}
+            - name: GRUS_POD_LABELS
+              value: {{ include "grus.keyValueList" .Values.instances.podLabels | quote }}
+            - name: GRUS_MAX_INSTANCES
+              value: {{ int .Values.controller.maxInstances | quote }}
+            - name: GRUS_DEBUG_ENDPOINTS
+              value: {{ ternary "true" "false" .Values.controller.debugEndpoints | quote }}
+            - name: GRUS_HOST_ID
+              value: {{ printf "k8s-%s" .Release.Namespace | quote }}
+            - name: GRUS_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "adminToken.existingSecret is required: name an existing Secret that holds the admin token" .Values.adminToken.existingSecret }}
+                  key: {{ .Values.adminToken.key | quote }}
+            {{- range $name, $value := .Values.controller.extraEnv }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- include "grus.containerSecurity" . | nindent 10 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grus
+            {{- range $name, $files := .Values.templates.seed }}
+            - name: seed-{{ $name }}
+              mountPath: /etc/grus/seed/{{ $name }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "grus.fullname" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- range $name, $files := .Values.templates.seed }}
+        - name: seed-{{ $name }}
+          configMap:
+            name: {{ include "grus.seedConfigMapName" (dict "root" $ "template" $name) }}
+            # ConfigMap keys cannot contain '/', so each file is stored under f<index> and mapped to its path here.
+            items:
+              {{- range $i, $file := $files }}
+              - key: f{{ $i }}
+                path: {{ $file.path | quote }}
+              {{- end }}
+        {{- end }}
