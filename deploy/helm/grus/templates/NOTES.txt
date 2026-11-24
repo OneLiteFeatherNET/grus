@@ -1,0 +1,16 @@
+Grus controller {{ .Chart.AppVersion }} is deployed as {{ include "grus.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+Instances reach the controller at:
+  {{ include "grus.publicURL" . }}
+
+The HTTP API is inside the cluster on port {{ .Values.service.port }}:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "grus.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is disabled. The database and file templates live in an emptyDir and are lost when the pod restarts.
+{{- end }}
+{{- if .Values.proxyService.enabled }}
+
+The proxy Service {{ include "grus.fullname" . }}-proxy exposes the instances of pool "{{ .Values.proxyService.pool }}" on port {{ .Values.proxyService.port }}.
+{{- end }}

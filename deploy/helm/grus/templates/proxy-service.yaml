@@ -1,0 +1,27 @@
+{{- if .Values.proxyService.enabled }}
+{{- $annotations := deepCopy .Values.proxyService.annotations }}
+{{- if .Values.proxyService.loadBalancerIP }}
+{{- $annotations = set $annotations "lbipam.cilium.io/ips" .Values.proxyService.loadBalancerIP }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "grus.fullname" . }}-proxy
+  labels:
+    {{- include "grus.labels" . | nindent 4 }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.proxyService.type }}
+  # Keeps the client address of the player and avoids a second hop to a pod on another node.
+  externalTrafficPolicy: Local
+  ports:
+    - name: minecraft
+      port: {{ int .Values.proxyService.port }}
+      targetPort: {{ int .Values.proxyService.port }}
+      protocol: TCP
+  selector:
+    grus.olf/pool: {{ .Values.proxyService.pool | quote }}
+{{- end }}

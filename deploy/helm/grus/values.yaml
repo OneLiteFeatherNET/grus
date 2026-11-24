@@ -1,0 +1,101 @@
+# Default values for the Grus chart.
+#
+# Holds no secrets. The admin token is read from a Secret that exists before the
+# release (adminToken.existingSecret); every other setting is an environment
+# variable of the controller with a value here or a default in the controller.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# The controller image. An empty tag means the chart's appVersion, so a chart
+# release deploys the controller image built from the same release.
+image:
+  repository: harbor.onelitefeather.dev/onelitefeather/grus
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Names of existing image pull Secrets for the controller pod (format: [{name: harbor-pull}]).
+imagePullSecrets: []
+
+adminToken:
+  # Required. Existing Secret with the admin token of the HTTP API. The release fails without it.
+  existingSecret: ""
+  # Key inside that Secret.
+  key: GRUS_ADMIN_TOKEN
+
+controller:
+  # Base URL that instances use to reach the controller. Empty means the in-cluster Service URL
+  # http://<fullname>.<namespace>.svc.cluster.local:<service.port>.
+  publicURL: ""
+  # Exposes the debug endpoints of the API (GRUS_DEBUG_ENDPOINTS).
+  debugEndpoints: false
+  # Hard limit of instances the controller creates per namespace (GRUS_MAX_INSTANCES).
+  maxInstances: 10
+  # Additional controller environment variables, name: value.
+  extraEnv: {}
+
+# Settings the controller applies to every instance pod it creates.
+instances:
+  # Names of image pull Secrets the instance pods use (passed on as GRUS_IMAGE_PULL_SECRETS).
+  imagePullSecrets: []
+  # PriorityClass of instance pods. feather-low keeps game servers below the platform workloads.
+  priorityClassName: feather-low
+  # Node selector of instance pods, key: value.
+  nodeSelector: {}
+  # Labels of instance pods, key: value. Logs of the instances are shipped as JSON.
+  podLabels:
+    logs.onelitefeather.net/format: json
+
+# PriorityClass of the controller pod itself. Empty means the namespace default.
+priorityClassName: ""
+
+# Node selector of the controller pod, key: value.
+nodeSelector: {}
+
+# Labels added to the controller pod, key: value.
+podLabels: {}
+
+resources:
+  requests:
+    memory: 64Mi
+    cpu: 50m
+  limits:
+    memory: 256Mi
+
+# Persistent volume at /var/lib/grus for the SQLite database and the file templates. Without it the
+# volume is an emptyDir, and a restart of the pod starts with an empty database and no templates.
+persistence:
+  enabled: true
+  size: 1Gi
+  # Empty uses the cluster default StorageClass.
+  storageClass: ""
+  # The database is a single-writer file, so one node at a time.
+  accessMode: ReadWriteOnce
+
+# The HTTP API of the controller (port 8080 inside the pod).
+service:
+  type: ClusterIP
+  port: 8080
+
+# Optional LoadBalancer Service that exposes the instances of one pool (the Minecraft proxies) to the
+# players. It selects the instance pods by the label grus.olf/pool. Off by default.
+proxyService:
+  enabled: false
+  type: LoadBalancer
+  # Cilium LB IPAM address (lbipam.cilium.io/ips annotation). Empty means the address is assigned from the pool.
+  loadBalancerIP: ""
+  annotations: {}
+  port: 25565
+  pool: proxy
+
+# Seed templates copied into the file template store when the pod starts. Each key is a template name;
+# its value is a list of files, each with a relative path inside the template and its content.
+# Example:
+#   templates:
+#     seed:
+#       lobby:
+#         - path: server.properties
+#           content: |
+#             motd=Lobby
+templates:
+  seed: {}
