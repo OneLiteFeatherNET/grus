@@ -1,0 +1,47 @@
+name: go
+
+# Controller and agent checks: formatting, vet, tests and builds of the Go module. The guard at the end
+# keeps the agent free of the Kubernetes client, which only the controller may depend on.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build the commands
+        run: go build ./cmd/...
+
+      - name: Keep the Kubernetes client out of the agent
+        run: |
+          if go list -deps ./cmd/grus-agent | grep -q '^k8s.io/'; then
+            echo "::error::cmd/grus-agent must not depend on k8s.io/*"
+            exit 1
+          fi

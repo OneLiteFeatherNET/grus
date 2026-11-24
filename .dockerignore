@@ -1,0 +1,6 @@
+# The Go build needs only the Go sources and the module files.
+java/
+.git
+.claude
+deploy/
+bin/
