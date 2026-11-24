@@ -64,6 +64,36 @@ public final class GrusClient {
         return read(send("POST", "/v1/self/ready", Map.of(), null), Instance.class);
     }
 
+    /**
+     * Calls {@link #ready()} until the controller accepts it, waiting {@code backoff} between attempts.
+     * Any {@link GrusException} (transport error or non-2xx) counts as a failed attempt.
+     *
+     * @param maxAttempts total number of calls, at least 1
+     * @return the instance as reported by the controller on the successful call
+     * @throws GrusException the error of the last attempt when all attempts failed
+     */
+    public Instance readyWithRetry(Backoff backoff, int maxAttempts) {
+        Objects.requireNonNull(backoff, "backoff");
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException("maxAttempts must be at least 1: " + maxAttempts);
+        }
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return ready();
+            } catch (GrusException e) {
+                if (attempt + 1 >= maxAttempts) {
+                    throw e;
+                }
+            }
+            try {
+                backoff.sleep(attempt);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new GrusException("Grus ready retry interrupted", 0, "", e);
+            }
+        }
+    }
+
     /** Reports players and labels ({@code PUT /v1/self/status}); counts as a heartbeat. */
     public Instance status(int players, int maxPlayers, Map<String, String> labels) {
         Map<String, Object> body = new LinkedHashMap<>();
