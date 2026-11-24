@@ -34,7 +34,7 @@ jobs:
         uses: azure/setup-helm@v5
 
       - name: Lint the chart
-        run: helm lint deploy/helm/grus
+        run: helm lint deploy/helm/grus -f deploy/helm/grus/ci/lint-values.yaml
 
       - name: Install kubeconform
         run: |
@@ -43,4 +43,4 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
       - name: Validate the rendered manifests
-        run: helm template grus deploy/helm/grus | kubeconform -strict -ignore-missing-schemas -summary
+        run: helm template grus deploy/helm/grus -f deploy/helm/grus/ci/lint-values.yaml | kubeconform -strict -ignore-missing-schemas -summary
