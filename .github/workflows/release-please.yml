@@ -1,0 +1,21 @@
+name: release-please
+
+# One release for the whole repository. release-please keeps the release pull request up to date on
+# main; when it is merged, the release is created and tagged. Tags created with GITHUB_TOKEN start no
+# workflow, so nothing here listens for a tag push.
+#
+# Prototype: this workflow does not publish images or SBOMs yet. Docker publishing on release comes
+# later, once the controller leaves the prototype stage; until then the prototype-images workflow
+# builds the images on demand.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    uses: OneLiteFeatherNET/workflows/.github/workflows/release-please.yml@v2.9.1
