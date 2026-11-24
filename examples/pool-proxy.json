@@ -1,0 +1,31 @@
+{
+  "role": "proxy",
+  "mode": "static",
+  "driver": "kubernetes",
+  "image": "harbor.onelitefeather.dev/onelitefeather/grus-velocity:IMAGE_TAG",
+  "env": {
+    "JAVA_TOOL_OPTIONS": "-XX:MaxRAMPercentage=75",
+    "GRUS_FALLBACK_POOL": "lobby"
+  },
+  "secretEnv": [
+    {
+      "name": "VELOCITY_SECRET",
+      "secret": "grus-dev-secrets",
+      "key": "VELOCITY_SECRET"
+    }
+  ],
+  "resources": {
+    "memoryMiB": 512,
+    "cpu": "250m"
+  },
+  "port": 25565,
+  "scaling": {
+    "min": 1,
+    "max": 1
+  },
+  "lifecycle": {
+    "gracePeriod": "20s",
+    "heartbeatTimeout": "20s",
+    "startTimeout": "3m"
+  }
+}
