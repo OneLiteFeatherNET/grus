@@ -110,12 +110,17 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/grus
+            # The root filesystem is read-only; SQLite and Go may still need a scratch directory.
+            - name: tmp
+              mountPath: /tmp
             {{- range $name, $files := .Values.templates.seed }}
             - name: seed-{{ $name }}
               mountPath: /etc/grus/seed/{{ $name }}
               readOnly: true
             {{- end }}
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: data
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
