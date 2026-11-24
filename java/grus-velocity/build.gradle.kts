@@ -30,3 +30,20 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("com.fasterxml.jackson", "net.onelitefeather.grus.shaded.jackson")
     mergeServiceFiles()
 }
+
+// Docker build context for the proxy image: plugins/grus-velocity.jar plus the config and image files.
+//   docker build -t grus-velocity build/docker-context
+val dockerContext by tasks.registering(Sync::class) {
+    group = "distribution"
+    description = "Assembles the Docker build context for the Velocity proxy image."
+    dependsOn(tasks.named("shadowJar"))
+    into("plugins") {
+        from(tasks.named<ShadowJar>("shadowJar")) {
+            rename { "grus-velocity.jar" }
+        }
+    }
+    from("src/docker") {
+        include("Dockerfile", "entrypoint.sh", "velocity.toml")
+    }
+    into(layout.buildDirectory.dir("docker-context"))
+}
