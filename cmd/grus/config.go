@@ -18,6 +18,13 @@ type config struct {
 	DB                   string
 	TemplatesDir         string
 	TemplateSeedDir      string
+	TemplatesBackend     string
+	S3Endpoint           string
+	S3Bucket             string
+	S3Prefix             string
+	S3Insecure           bool
+	S3AccessKey          string
+	S3SecretKey          string
 	Driver               string
 	Namespace            string
 	PublicURL            string
@@ -48,6 +55,11 @@ func loadConfig(args []string, getenv func(string) string) (config, error) {
 	db := str("db", "GRUS_DB", "./grus.db", "SQLite database file")
 	templatesDir := str("templates-dir", "GRUS_TEMPLATES_DIR", "./templates", "template store root")
 	seedDir := str("template-seed-dir", "GRUS_TEMPLATE_SEED_DIR", "", "directory of template seeds, one subdirectory per template")
+	templatesBackend := str("templates-backend", "GRUS_TEMPLATES_BACKEND", "fs", "template store backend: fs or s3")
+	s3Endpoint := str("s3-endpoint", "GRUS_S3_ENDPOINT", "", "S3 endpoint for the s3 template backend: host:port or http(s) URL")
+	s3Bucket := str("s3-bucket", "GRUS_S3_BUCKET", "", "S3 bucket of the s3 template backend")
+	s3Prefix := str("s3-prefix", "GRUS_S3_PREFIX", "", "key prefix inside the bucket, optional")
+	s3Insecure := str("s3-insecure", "GRUS_S3_INSECURE", "false", "use plain HTTP for a host:port S3 endpoint (true/false)")
 	driverName := str("driver", "GRUS_DRIVER", "kubernetes", "instance driver: kubernetes or process")
 	namespace := str("namespace", "GRUS_NAMESPACE", "", "kubernetes namespace of the instances")
 	publicURL := str("public-url", "GRUS_PUBLIC_URL", "", "URL instances use to reach the controller (required)")
@@ -74,6 +86,12 @@ func loadConfig(args []string, getenv func(string) string) (config, error) {
 		DB:                   *db,
 		TemplatesDir:         *templatesDir,
 		TemplateSeedDir:      *seedDir,
+		TemplatesBackend:     *templatesBackend,
+		S3Endpoint:           *s3Endpoint,
+		S3Bucket:             *s3Bucket,
+		S3Prefix:             *s3Prefix,
+		S3AccessKey:          getenv("AWS_ACCESS_KEY_ID"),
+		S3SecretKey:          getenv("AWS_SECRET_ACCESS_KEY"),
 		Driver:               *driverName,
 		Namespace:            *namespace,
 		PublicURL:            *publicURL,
@@ -101,6 +119,9 @@ func loadConfig(args []string, getenv func(string) string) (config, error) {
 	if cfg.ReconcileInterval, err = time.ParseDuration(*interval); err != nil {
 		return config{}, fmt.Errorf("GRUS_RECONCILE_INTERVAL: %w", err)
 	}
+	if cfg.S3Insecure, err = strconv.ParseBool(*s3Insecure); err != nil {
+		return config{}, fmt.Errorf("GRUS_S3_INSECURE: %w", err)
+	}
 
 	if err := cfg.validate(); err != nil {
 		return config{}, err
@@ -124,6 +145,15 @@ func (c config) validate() error {
 	if c.PublicURL == "" {
 		return errors.New("GRUS_PUBLIC_URL is required")
 	}
+	switch c.TemplatesBackend {
+	case "fs":
+	case "s3":
+		if err := c.validateS3(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("GRUS_TEMPLATES_BACKEND must be fs or s3, got %q", c.TemplatesBackend)
+	}
 	if len(c.AdminToken) < minAdminTokenLen {
 		return fmt.Errorf("GRUS_ADMIN_TOKEN must be at least %d characters", minAdminTokenLen)
 	}
@@ -132,6 +162,24 @@ func (c config) validate() error {
 	}
 	if c.ReconcileInterval <= 0 {
 		return errors.New("GRUS_RECONCILE_INTERVAL must be positive")
+	}
+	return nil
+}
+
+// validateS3 checks that the s3 template backend has everything it needs. Credentials are checked for
+// presence only: their values never appear in an error.
+func (c config) validateS3() error {
+	if c.S3Endpoint == "" {
+		return errors.New("GRUS_S3_ENDPOINT is required for the s3 template backend")
+	}
+	if c.S3Bucket == "" {
+		return errors.New("GRUS_S3_BUCKET is required for the s3 template backend")
+	}
+	if c.S3AccessKey == "" {
+		return errors.New("AWS_ACCESS_KEY_ID is required for the s3 template backend")
+	}
+	if c.S3SecretKey == "" {
+		return errors.New("AWS_SECRET_ACCESS_KEY is required for the s3 template backend")
 	}
 	return nil
 }
