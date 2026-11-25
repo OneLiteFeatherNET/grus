@@ -1,0 +1,13 @@
+{
+  "overview": {
+    "title": "Overview",
+    "subtitle": "Pools and running instances at a glance",
+    "poolsLabel": "Pools",
+    "role": "Role",
+    "mode": "Mode",
+    "instances": "Instances",
+    "serving": "{serving} of {total} serving",
+    "maintenance": "Maintenance",
+    "empty": "No pools yet"
+  }
+}

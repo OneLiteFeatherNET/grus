@@ -1,0 +1,33 @@
+{
+  "common": {
+    "appName": "Grus",
+    "skipToContent": "Zum Inhalt springen",
+    "menu": "Menü",
+    "navigation": "Navigation",
+    "close": "Schließen",
+    "language": "Sprache wechseln",
+    "lightTheme": "Helles Design",
+    "darkTheme": "Dunkles Design",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "nav": {
+      "overview": "Übersicht",
+      "pools": "Pools",
+      "instances": "Instanzen",
+      "templates": "Templates",
+      "events": "Ereignisse"
+    },
+    "live": {
+      "idle": "Live: inaktiv",
+      "connecting": "Live: verbindet",
+      "open": "Live",
+      "reconnecting": "Live: verbindet neu",
+      "closed": "Live: getrennt"
+    },
+    "problem": {
+      "network": "Keine Verbindung zur Grus-API",
+      "networkHint": "Die Oberfläche erreicht den Server nicht. Die Verbindung wird automatisch erneut versucht.",
+      "unexpected": "Unerwarteter Fehler"
+    }
+  }
+}

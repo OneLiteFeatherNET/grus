@@ -1,0 +1,65 @@
+name: web
+
+# Grus web UI checks: lint, typecheck, tests (including the freshness check of the generated API types) and the
+# production build. The UI reads api/openapi.yaml, so changes to the spec run these checks too.
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - "api/openapi.yaml"
+      - ".github/workflows/web.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "api/openapi.yaml"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Lint, typecheck, test and build (web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The pnpm version comes from the packageManager field of web/package.json.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6.1.1
+        with:
+          package_json_file: web/package.json
+
+      - name: Set up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm exec vitest run --maxWorkers=2
+
+      - name: Build
+        run: pnpm build

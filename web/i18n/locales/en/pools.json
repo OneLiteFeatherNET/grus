@@ -1,0 +1,7 @@
+{
+  "pools": {
+    "title": "Pools",
+    "subtitle": "Scaling, maintenance and instances per pool",
+    "placeholder": "The pool list is coming soon"
+  }
+}

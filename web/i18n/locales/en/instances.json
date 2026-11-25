@@ -1,0 +1,21 @@
+{
+  "instances": {
+    "title": "Instances",
+    "subtitle": "Lifecycle of the running servers",
+    "placeholder": "The instance list is coming soon",
+    "states": {
+      "Requested": "Requested",
+      "Scheduled": "Scheduled",
+      "Preparing": "Preparing",
+      "Starting": "Starting",
+      "Ready": "Ready",
+      "Allocated": "Allocated",
+      "Unhealthy": "Unhealthy",
+      "Draining": "Draining",
+      "Stopping": "Stopping",
+      "Stopped": "Stopped",
+      "Failed": "Failed",
+      "Lost": "Lost"
+    }
+  }
+}
