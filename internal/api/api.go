@@ -96,6 +96,7 @@ func build(mux *http.ServeMux, s *server, version string) huma.API {
 	api := humago.New(mux, config)
 	api.UseMiddleware(s.auth.middleware(api))
 	s.registerPools(api)
+	s.registerDeclarations(api)
 	s.registerInstances(api)
 	s.registerSelf(api)
 	s.registerTemplates(api)

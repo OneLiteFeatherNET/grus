@@ -36,6 +36,13 @@ type fakeService struct {
 	putName string
 	putSpec model.PoolSpec
 
+	env        model.Environment
+	envName    string
+	envSpec    model.EnvironmentSpec
+	deletedEnv string
+	groupName  string
+	network    model.NetworkStatus
+
 	listFilter store.InstanceFilter
 	listed     []model.Instance
 
@@ -77,6 +84,43 @@ func (f *fakeService) DeletePool(context.Context, string, bool) error { return n
 func (f *fakeService) SetMaintenance(_ context.Context, name string, enabled bool) (model.Pool, error) {
 	return model.Pool{Name: name, Maintenance: enabled}, nil
 }
+
+func (f *fakeService) PutEnvironment(_ context.Context, name string, spec model.EnvironmentSpec) (model.Environment, error) {
+	f.envName, f.envSpec = name, spec
+	if f.putErr != nil {
+		return model.Environment{}, f.putErr
+	}
+	return model.Environment{Name: name, Spec: spec, Source: model.SourceAPI, Generation: 1}, nil
+}
+
+func (f *fakeService) GetEnvironment(context.Context, string) (model.Environment, error) {
+	return f.env, nil
+}
+
+func (f *fakeService) ListEnvironments(context.Context) ([]model.Environment, error) { return nil, nil }
+
+func (f *fakeService) DeleteEnvironment(_ context.Context, name string) error {
+	f.deletedEnv = name
+	return f.putErr
+}
+
+func (f *fakeService) PutGroup(_ context.Context, name string, spec model.GroupSpec) (model.Group, error) {
+	f.groupName = name
+	if f.putErr != nil {
+		return model.Group{}, f.putErr
+	}
+	return model.Group{Name: name, Spec: spec, Source: model.SourceAPI, Generation: 1}, nil
+}
+
+func (f *fakeService) GetGroup(context.Context, string) (model.Group, error) {
+	return model.Group{}, nil
+}
+
+func (f *fakeService) ListGroups(context.Context) ([]model.Group, error) { return nil, nil }
+
+func (f *fakeService) DeleteGroup(context.Context, string) error { return f.putErr }
+
+func (f *fakeService) Network(context.Context) (model.NetworkStatus, error) { return f.network, nil }
 
 func (f *fakeService) ListInstances(_ context.Context, filter store.InstanceFilter) ([]model.Instance, error) {
 	f.listFilter = filter
