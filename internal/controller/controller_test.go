@@ -12,6 +12,7 @@ import (
 
 	"github.com/OneLiteFeatherNET/grus/internal/driver"
 	"github.com/OneLiteFeatherNET/grus/internal/driver/fake"
+	"github.com/OneLiteFeatherNET/grus/internal/driver/router"
 	"github.com/OneLiteFeatherNET/grus/internal/model"
 	"github.com/OneLiteFeatherNET/grus/internal/store"
 )
@@ -349,6 +350,68 @@ func TestVanishedReadyInstanceIsLostAndReplaced(t *testing.T) {
 	live := f.instancesOf("lobby")
 	if len(live) != 1 || live[0].ID == id {
 		t.Fatalf("live instances = %+v, want one new instance", live)
+	}
+}
+
+// TestPartialListKeepsInstancesOfUnlistedHostAndReconcilesTheRest runs the controller over a router of two
+// hosts. While host-b cannot be listed, its instance must keep its state, and host-a must still lose and
+// replace its vanished instance.
+func TestPartialListKeepsInstancesOfUnlistedHostAndReconcilesTheRest(t *testing.T) {
+	f := newFixture(t, Config{})
+	hostA, hostB := fake.New("host-a"), fake.New("host-b")
+	rtr := router.New(func(spec driver.StartSpec) (string, error) {
+		if spec.Pool.Name == "survival" {
+			return "host-b", nil
+		}
+		return "host-a", nil
+	})
+	for _, d := range []driver.Driver{hostA, hostB} {
+		if err := rtr.Add(d); err != nil {
+			t.Fatalf("add host %s: %v", d.Host(), err)
+		}
+	}
+	f.c = New(f.c.cfg, f.st, rtr, nil, f.pub)
+	f.putPool("lobby", dynamicSpec(1, 0))
+	f.putPool("survival", dynamicSpec(1, 0))
+	f.reconcile()
+	lobby := hostA.Started()[0].Instance.ID
+	survival := hostB.Started()[0].Instance.ID
+	hostA.SetPhase(lobby, driver.PhaseRunning, "10.0.0.1:25565")
+	hostB.SetPhase(survival, driver.PhaseRunning, "10.0.0.2:25565")
+	f.reconcile()
+	for _, id := range []string{lobby, survival} {
+		if _, err := f.c.SelfReady(f.ctx, id); err != nil {
+			t.Fatalf("self ready %s: %v", id, err)
+		}
+	}
+
+	hostB.ListErr = errors.New("agent offline")
+	hostA.Remove(lobby)
+	f.reconcile() // must not fail: the partial list is tolerated
+
+	if got := f.get(survival).State; got != model.StateReady {
+		t.Errorf("state of instance on unlisted host = %s, want Ready (not Lost)", got)
+	}
+	if got := f.get(survival).DriverRef; got != "host-b/"+survival {
+		t.Errorf("driver ref of instance on unlisted host = %q, want host-b/%s", got, survival)
+	}
+	if _, err := f.st.GetInstance(f.ctx, lobby); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("vanished instance on healthy host still stored: %v", err)
+	}
+	if n := len(hostA.Started()); n != 2 {
+		t.Errorf("host-a started %d instances, want a replacement (2 total)", n)
+	}
+	if len(hostB.Stopped())+len(hostB.Killed()) != 0 {
+		t.Errorf("instance on unlisted host was stopped or killed: stopped=%v killed=%v", hostB.Stopped(), hostB.Killed())
+	}
+	if n := len(hostB.Started()); n != 1 {
+		t.Errorf("host-b started %d instances, want 1: the live instance must count as present", n)
+	}
+
+	hostB.ListErr = nil
+	f.reconcile()
+	if got := f.get(survival).State; got != model.StateReady {
+		t.Errorf("state after host-b is listed again = %s, want Ready", got)
 	}
 }
 
