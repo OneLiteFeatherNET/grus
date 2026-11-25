@@ -192,3 +192,23 @@ func TestTemplates(t *testing.T) {
 		t.Errorf("got %v err %v", got, err)
 	}
 }
+
+func TestCreatePrivateServerTellsCreatedFromExisting(t *testing.T) {
+	for _, tc := range []struct {
+		status  int
+		created bool
+	}{{http.StatusCreated, true}, {http.StatusOK, false}} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+			_, _ = w.Write([]byte(`{"id":"home-1"}`))
+		}))
+		c := New(srv.URL, "t", srv.Client())
+
+		inst, created, err := c.CreatePrivateServer(context.Background(), "home", "alex")
+		srv.Close()
+
+		if err != nil || created != tc.created || inst["id"] != "home-1" {
+			t.Errorf("status %d: got (%v, %v, %v), want created=%v", tc.status, inst, created, err, tc.created)
+		}
+	}
+}

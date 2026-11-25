@@ -409,6 +409,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/private-servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List private servers, optionally of one owner */
+        get: operations["list-private-servers"];
+        put?: never;
+        /**
+         * Start a private server for an owner, or return the one the owner already has
+         * @description Answers 201 when an instance was started and 200 when the owner's live instance is returned. 409 when the owner is at the quota of the pool.
+         */
+        post: operations["create-private-server"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/private-servers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop a private server once its players left (drain) */
+        delete: operations["stop-private-server"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/self": {
         parameters: {
             query?: never;
@@ -964,9 +1002,25 @@ export interface components {
             templates?: components["schemas"]["TemplateRef"][] | null;
         };
         Private: {
+            /** @description Stop an instance after this long without players (default 10m) */
             idleTimeout?: string;
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Instances one owner may have at once (default 1)
+             */
             quotaPerOwner?: number;
+        };
+        PrivateServerBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/PrivateServerBody.json
+             */
+            readonly $schema?: string;
+            /** @description Owner of the server, e.g. a player uuid */
+            owner: string;
+            /** @description Private pool (a pool with a private section) */
+            pool: string;
         };
         RegisterRequest: {
             /**
@@ -2027,6 +2081,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Pool"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-private-servers": {
+        parameters: {
+            query?: {
+                /** @description Only the private servers of this owner */
+                owner?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instance"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-private-server": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateServerBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instance"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "stop-private-server": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Instance id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instance"];
                 };
             };
             /** @description Error */

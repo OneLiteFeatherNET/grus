@@ -142,10 +142,14 @@ type Sharding struct {
 	Cells    []string `json:"cells,omitempty" doc:"Explicit cell names"`
 }
 
-// Private lets owners run their own instance of a pool (spec only; behaviour follows later).
+// Private lets owners run their own instance of a pool. A pool with Private set is never autoscaled: its
+// instances are created on demand (POST /v1/private-servers) and stopped after IdleTimeout without players.
+//
+// World persistence is spec only: a later version snapshots the instance directory to a template when the
+// instance is stopped and restores it on the next start, so the owner's world survives the idle stop.
 type Private struct {
-	QuotaPerOwner int      `json:"quotaPerOwner,omitempty"`
-	IdleTimeout   Duration `json:"idleTimeout,omitempty"`
+	QuotaPerOwner int      `json:"quotaPerOwner,omitempty" doc:"Instances one owner may have at once (default 1)"`
+	IdleTimeout   Duration `json:"idleTimeout,omitempty" doc:"Stop an instance after this long without players (default 10m)"`
 }
 
 // PoolSpec is the declarative template for the instances of a pool. Without Environment the inline
@@ -183,6 +187,14 @@ const (
 	DefaultGracePeriod       = 30 * time.Second
 	DefaultHeartbeatTimeout  = 15 * time.Second
 	DefaultStartTimeout      = 5 * time.Minute
+	DefaultQuotaPerOwner     = 1
+	DefaultPrivateIdle       = 10 * time.Minute
+)
+
+// Instance label keys set by Grus. SelfStatus keeps labels with this prefix when an instance replaces its labels.
+const (
+	LabelPrefix = "grus.olf/"
+	LabelOwner  = LabelPrefix + "owner"
 )
 
 // WithDefaults returns a copy with every empty optional field set to its default.
@@ -210,6 +222,16 @@ func (s PoolSpec) WithDefaults() PoolSpec {
 	}
 	if s.Lifecycle.StartTimeout == 0 {
 		s.Lifecycle.StartTimeout = Duration(DefaultStartTimeout)
+	}
+	if s.Private != nil {
+		p := *s.Private
+		if p.QuotaPerOwner == 0 {
+			p.QuotaPerOwner = DefaultQuotaPerOwner
+		}
+		if p.IdleTimeout == 0 {
+			p.IdleTimeout = Duration(DefaultPrivateIdle)
+		}
+		s.Private = &p
 	}
 	return s
 }
@@ -269,6 +291,26 @@ func (s PoolSpec) Validate() []FieldError {
 	}
 	if s.Scaling.TargetUtilization <= 0 || s.Scaling.TargetUtilization > 1 {
 		add("scaling.targetUtilization", "must be in (0, 1]")
+	}
+	if p := s.Private; p != nil {
+		if p.QuotaPerOwner < 0 {
+			add("private.quotaPerOwner", "must not be negative")
+		}
+		if p.IdleTimeout < 0 {
+			add("private.idleTimeout", "must not be negative")
+		}
+		if s.Scaling.Min != 0 {
+			add("scaling.min", "must be 0 for a private pool; instances are created on demand")
+		}
+		if s.Scaling.Max < 1 {
+			add("scaling.max", "must be at least 1 for a private pool")
+		}
+		if s.Scaling.Buffer != 0 {
+			add("scaling.buffer", "must be 0 for a private pool")
+		}
+		if s.Mode != ModeDynamic {
+			add("mode", "must be dynamic for a private pool")
+		}
 	}
 	for i, t := range s.Templates {
 		if t.Name == "" {
@@ -336,6 +378,7 @@ const (
 	EventTemplateTagged  = "template.tagged"
 	EventNetworkPlayers  = "network.players"
 	EventPoolCondition   = "pool.condition"
+	EventPrivateIdleStop = "private.idle-stop"
 	EventResync          = "resync"
 )
 
@@ -380,6 +423,13 @@ type PoolConditionData struct {
 	Pool    string `json:"pool"`
 	Type    string `json:"type"`
 	Message string `json:"message"`
+}
+
+// PrivateIdleStopData is the payload of private.idle-stop: a private instance was stopped after it stayed empty.
+type PrivateIdleStopData struct {
+	Pool     string `json:"pool"`
+	Instance string `json:"instance"`
+	Owner    string `json:"owner"`
 }
 
 // Publisher sends events to stream subscribers. Implemented by events.Hub.

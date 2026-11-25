@@ -51,7 +51,7 @@ func newRoot(env *Env, defaults opts, inShell bool) *cobra.Command {
 	root.AddCommand(
 		newGetCmd(env, &o), newDescribeCmd(env, &o), newApplyCmd(env, &o), newScaleCmd(env, &o),
 		newStopCmd(env, &o), newLogsCmd(env, &o), newExecCmd(env, &o), newEventsCmd(env, &o),
-		newNetworkCmd(env, &o), newLoginCmd(env), newConfigCmd(env),
+		newNetworkCmd(env, &o), newPrivateCmd(env, &o), newLoginCmd(env), newConfigCmd(env),
 	)
 	if inShell {
 		root.AddCommand(newExitCmd(env))

@@ -298,3 +298,37 @@ func (c *Client) stream(ctx context.Context, path, lastID string, fn func(Event)
 	}
 	return err
 }
+
+// CreatePrivateServer starts the private server of owner in pool or returns the one the owner already has.
+// created tells which of the two happened.
+func (c *Client) CreatePrivateServer(ctx context.Context, pool, owner string) (inst Object, created bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+	defer cancel()
+	req, err := c.newRequest(ctx, http.MethodPost, "/v1/private-servers", nil, map[string]string{"pool": pool, "owner": owner})
+	if err != nil {
+		return nil, false, err
+	}
+	resp, err := c.send(req)
+	if err != nil {
+		return nil, false, err
+	}
+	defer resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&inst); err != nil {
+		return nil, false, err
+	}
+	return inst, resp.StatusCode == http.StatusCreated, nil
+}
+
+// PrivateServers lists the private servers, of one owner when owner is not empty.
+func (c *Client) PrivateServers(ctx context.Context, owner string) ([]Object, error) {
+	q := url.Values{}
+	if owner != "" {
+		q.Set("owner", owner)
+	}
+	var out []Object
+	err := c.call(ctx, http.MethodGet, "/v1/private-servers", q, nil, &out)
+	if err != nil && isStatus(err, http.StatusNotFound) {
+		return nil, &NotSupportedError{What: "private servers"}
+	}
+	return out, err
+}

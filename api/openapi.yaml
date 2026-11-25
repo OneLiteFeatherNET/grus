@@ -744,10 +744,36 @@ components:
       additionalProperties: false
       properties:
         idleTimeout:
+          description: Stop an instance after this long without players (default 10m)
           type: string
         quotaPerOwner:
+          description: Instances one owner may have at once (default 1)
           format: int64
           type: integer
+      type: object
+    PrivateServerBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/PrivateServerBody.json
+          format: uri
+          readOnly: true
+          type: string
+        owner:
+          description: Owner of the server, e.g. a player uuid
+          maxLength: 63
+          minLength: 1
+          pattern: ^[A-Za-z0-9][A-Za-z0-9._-]*$
+          type: string
+        pool:
+          description: Private pool (a pool with a private section)
+          minLength: 1
+          type: string
+      required:
+        - pool
+        - owner
       type: object
     RegisterRequest:
       additionalProperties: false
@@ -1765,6 +1791,107 @@ paths:
       security:
         - bearer: []
       summary: Enable or disable maintenance for a pool
+  /v1/private-servers:
+    get:
+      operationId: list-private-servers
+      parameters:
+        - description: Only the private servers of this owner
+          explode: false
+          in: query
+          name: owner
+          schema:
+            description: Only the private servers of this owner
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Instance"
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: List private servers, optionally of one owner
+    post:
+      description: Answers 201 when an instance was started and 200 when the owner's live instance is returned. 409 when the owner is at the quota of the pool.
+      operationId: create-private-server
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivateServerBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+          description: OK
+        "404":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Not Found
+        "409":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Conflict
+        "422":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Unprocessable Entity
+        "500":
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Internal Server Error
+      security:
+        - bearer: []
+      summary: Start a private server for an owner, or return the one the owner already has
+  /v1/private-servers/{id}:
+    delete:
+      operationId: stop-private-server
+      parameters:
+        - description: Instance id
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Instance id
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Stop a private server once its players left (drain)
   /v1/self:
     get:
       operationId: get-self

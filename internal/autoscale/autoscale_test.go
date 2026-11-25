@@ -294,3 +294,15 @@ func threeEmptyReady() []model.Instance {
 		inst("young", model.StateReady, 0, t0.Add(-time.Minute)),
 	}
 }
+
+func TestPrivatePoolIsNeverScaled(t *testing.T) {
+	spec := dynamicSpec(0, 5, 0)
+	spec.Private = &model.Private{}
+	insts := []model.Instance{inst("home-a", model.StateReady, 0, t0), inst("home-b", model.StateAllocated, 3, t0)}
+
+	d := Decide(PoolView{Name: "home", Spec: spec, Instances: insts}, t0.Add(time.Hour))
+
+	if d.Start != 0 || len(d.Drain) != 0 || d.Direction != "" {
+		t.Fatalf("decision for a private pool = %+v, want no start, drain or direction", d)
+	}
+}

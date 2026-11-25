@@ -120,6 +120,12 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 		}
 	}
 
+	// 3b. Private instances that stayed empty for the idle timeout.
+	if insts, err = c.listAll(ctx); err != nil {
+		return err
+	}
+	errs = append(errs, c.stopIdlePrivate(ctx, insts, specs, unlisted, now)...)
+
 	// 4. Autoscaling per pool.
 	if insts, err = c.listAll(ctx); err != nil {
 		return err

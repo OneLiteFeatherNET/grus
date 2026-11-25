@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 
 	"github.com/OneLiteFeatherNET/grus/internal/driver"
 	"github.com/OneLiteFeatherNET/grus/internal/model"
@@ -262,7 +263,7 @@ func (c *Controller) SelfStatus(ctx context.Context, id string, u StatusUpdate) 
 		inst.MaxPlayers = u.MaxPlayers
 	}
 	if u.Labels != nil {
-		inst.Labels = u.Labels
+		inst.Labels = withGrusLabels(u.Labels, inst.Labels)
 	}
 	inst.LastHeartbeat = &now
 
@@ -319,4 +320,21 @@ func (c *Controller) SelfShutdown(ctx context.Context, id string) (model.Instanc
 	}
 	c.Trigger()
 	return inst, nil
+}
+
+// withGrusLabels returns reported plus the grus.olf/ labels of current: an instance cannot drop or forge the
+// labels the controller sets (owner, cells).
+func withGrusLabels(reported, current map[string]string) map[string]string {
+	out := make(map[string]string, len(reported)+len(current))
+	for k, v := range reported {
+		if !strings.HasPrefix(k, model.LabelPrefix) {
+			out[k] = v
+		}
+	}
+	for k, v := range current {
+		if strings.HasPrefix(k, model.LabelPrefix) {
+			out[k] = v
+		}
+	}
+	return out
 }

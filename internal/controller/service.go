@@ -22,6 +22,8 @@ var (
 	ErrLimit = errors.New("instance limit reached")
 	// ErrManagedElsewhere: the object is owned by Kubernetes and cannot be changed through the API (HTTP 409).
 	ErrManagedElsewhere = errors.New("managed by kubernetes")
+	// ErrQuota: the owner already has as many private instances in the pool as the quota allows (HTTP 409).
+	ErrQuota = errors.New("private server quota reached")
 )
 
 // ValidationError carries field errors of a pool, environment or group spec (HTTP 422).
@@ -79,6 +81,14 @@ type Service interface {
 	StopInstance(ctx context.Context, id string, opts StopOptions) (model.Instance, error)
 	Logs(ctx context.Context, id string, tail int, follow bool) (io.ReadCloser, error)
 	Command(ctx context.Context, id string, line string) error
+
+	// CreatePrivateServer returns the live private instance of owner in pool or starts one; created tells which.
+	// ErrQuota when the owner has no usable instance but is at the quota of the pool.
+	CreatePrivateServer(ctx context.Context, pool, owner string) (inst model.Instance, created bool, err error)
+	// ListPrivateServers lists the live private instances; owner filters when not empty.
+	ListPrivateServers(ctx context.Context, owner string) ([]model.Instance, error)
+	// StopPrivateServer drains a private instance: it stops as soon as its players left.
+	StopPrivateServer(ctx context.Context, id string) (model.Instance, error)
 
 	// AuthenticateInstance maps a plain per-instance token to its live (non-terminal) instance.
 	AuthenticateInstance(ctx context.Context, token string) (model.Instance, error)

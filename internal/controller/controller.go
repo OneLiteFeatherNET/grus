@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math/big"
 	"strings"
 	"sync"
@@ -61,6 +62,7 @@ type Controller struct {
 	resolveWarned map[string]string     // per pool: last unresolvable reason already reported
 	lastNetwork   model.NetworkStatus   // last network.players payload
 	adoptHosts    map[string]bool       // hosts whose unknown instances are adopted once they can be listed
+	idleSince     map[string]time.Time  // per private instance: since when it has had no players
 }
 
 // New builds a controller. Call Adopt (or Run, which adopts first) before reconciling.
@@ -93,6 +95,7 @@ func New(cfg Config, st store.Store, drv driver.Driver, tpl templates.Store, pub
 		lastPublished: make(map[string]time.Time),
 		resolveWarned: make(map[string]string),
 		adoptHosts:    make(map[string]bool),
+		idleSince:     make(map[string]time.Time),
 	}
 }
 
@@ -342,6 +345,11 @@ func (c *Controller) lifecycleOf(ctx context.Context, pool string) model.Lifecyc
 // createInstance records a new Requested instance, resolves templates, schedules it and starts it through
 // the driver. Template and start failures end in Failed, not in an error; only storage errors are returned.
 func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model.Instance, error) {
+	return c.createInstanceWithLabels(ctx, pool, nil)
+}
+
+// createInstanceWithLabels is createInstance for an instance that starts with labels (e.g. its owner).
+func (c *Controller) createInstanceWithLabels(ctx context.Context, pool model.Pool, labels map[string]string) (model.Instance, error) {
 	spec := pool.Spec.WithDefaults()
 	now := c.clock.Now()
 
@@ -358,7 +366,7 @@ func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model
 	sum := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(sum[:])
 
-	inst, err := c.insertRequested(ctx, pool, spec, now, tokenHash)
+	inst, err := c.insertRequested(ctx, pool, spec, now, tokenHash, labels)
 	if err != nil {
 		return model.Instance{}, err
 	}
@@ -390,7 +398,7 @@ func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model
 }
 
 // insertRequested stores a new Requested instance with a fresh id and publishes instance.created.
-func (c *Controller) insertRequested(ctx context.Context, pool model.Pool, spec model.PoolSpec, now time.Time, tokenHash string) (model.Instance, error) {
+func (c *Controller) insertRequested(ctx context.Context, pool model.Pool, spec model.PoolSpec, now time.Time, tokenHash string, labels map[string]string) (model.Instance, error) {
 	for attempt := 0; attempt < maxIDAttempts; attempt++ {
 		id, err := c.newID(ctx, pool.Name, spec.Mode)
 		if err != nil {
@@ -406,6 +414,7 @@ func (c *Controller) insertRequested(ctx context.Context, pool model.Pool, spec 
 			StateSince:     now,
 			CreatedAt:      now,
 			MaxPlayers:     spec.Scaling.Capacity,
+			Labels:         maps.Clone(labels),
 			TokenHash:      tokenHash,
 		}
 		err = c.st.CreateInstance(ctx, inst)
