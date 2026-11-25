@@ -392,6 +392,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/pools/{pool}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the cells of a sharded pool with the instance that serves each */
+        get: operations["list-pool-cells"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pools/{pool}/cells/at": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find the cell and instance that own a block position
+         * @description 404 when no cell covers the block, 409 when the cell has no Ready instance yet.
+         */
+        get: operations["get-pool-cell-at"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pools/{pool}/maintenance": {
         parameters: {
             query?: never;
@@ -613,6 +650,52 @@ export interface components {
              * @description Memory available for instances
              */
             memoryMiB?: number;
+        };
+        Cell: {
+            /**
+             * Format: int64
+             * @description Largest chunk x of the cell
+             */
+            maxX: number;
+            /**
+             * Format: int64
+             * @description Largest chunk z of the cell
+             */
+            maxZ: number;
+            /**
+             * Format: int64
+             * @description Smallest chunk x of the cell
+             */
+            minX: number;
+            /**
+             * Format: int64
+             * @description Smallest chunk z of the cell
+             */
+            minZ: number;
+            /** @description Cell name; assigned to exactly one Ready instance */
+            name: string;
+        };
+        CellBounds: {
+            /** Format: int64 */
+            maxX: number;
+            /** Format: int64 */
+            maxZ: number;
+            /** Format: int64 */
+            minX: number;
+            /** Format: int64 */
+            minZ: number;
+        };
+        CellInfo: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CellInfo.json
+             */
+            readonly $schema?: string;
+            address?: string;
+            bounds: components["schemas"]["CellBounds"];
+            cell: string;
+            instance?: string;
         };
         Command: {
             instance: string;
@@ -1070,11 +1153,11 @@ export interface components {
         Sharding: {
             /**
              * Format: int64
-             * @description Cell edge length in chunks
+             * @description Cell edge length in chunks, used when cells are generated (default 32)
              */
             cellSize?: number;
-            /** @description Explicit cell names */
-            cells?: string[] | null;
+            /** @description Static cell list; bounds are chunk coordinates */
+            cells?: components["schemas"]["Cell"][] | null;
         };
         StatusUpdate: {
             /**
@@ -2049,6 +2132,102 @@ export interface operations {
             };
             /** @description Error */
             default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-pool-cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Pool name */
+                pool: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CellInfo"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-pool-cell-at": {
+        parameters: {
+            query: {
+                /** @description Block x coordinate */
+                x: number;
+                /** @description Block z coordinate */
+                z: number;
+            };
+            header?: never;
+            path: {
+                /** @description Pool name */
+                pool: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CellInfo"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
