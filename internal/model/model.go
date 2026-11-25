@@ -109,11 +109,56 @@ type Lifecycle struct {
 	StartTimeout     Duration `json:"startTimeout,omitempty"`
 }
 
-// PoolSpec is the declarative template for the instances of a pool.
+// Source says who owns a declaration. Objects owned by kubernetes are read-only through the REST API.
+type Source string
+
+const (
+	SourceAPI        Source = "api"
+	SourceKubernetes Source = "kubernetes"
+	SourceFile       Source = "file"
+)
+
+// Valid reports whether s is a known source.
+func (s Source) Valid() bool {
+	return s == SourceAPI || s == SourceKubernetes || s == SourceFile
+}
+
+// Placement drivers.
+const (
+	DriverKubernetes = "kubernetes"
+	DriverAgent      = "agent"
+	DriverProcess    = "process"
+)
+
+// Placement says where the instances of a pool run. Host names the agent for the agent driver.
+type Placement struct {
+	Driver string `json:"driver,omitempty"`
+	Host   string `json:"host,omitempty"`
+}
+
+// Sharding splits a pool's world into cells (spec only; behaviour follows later).
+type Sharding struct {
+	CellSize int      `json:"cellSize,omitempty" doc:"Cell edge length in chunks"`
+	Cells    []string `json:"cells,omitempty" doc:"Explicit cell names"`
+}
+
+// Private lets owners run their own instance of a pool (spec only; behaviour follows later).
+type Private struct {
+	QuotaPerOwner int      `json:"quotaPerOwner,omitempty"`
+	IdleTimeout   Duration `json:"idleTimeout,omitempty"`
+}
+
+// PoolSpec is the declarative template for the instances of a pool. Without Environment the inline
+// v1 fields (Image, Command, Args, Env, Port) describe how to run; Driver is the v1 spelling of Placement.Driver.
 type PoolSpec struct {
 	Role              Role              `json:"role"`
 	Mode              Mode              `json:"mode"`
-	Driver            string            `json:"driver"`
+	Driver            string            `json:"driver,omitempty"`
+	Placement         Placement         `json:"placement,omitempty"`
+	Environment       string            `json:"environment,omitempty"`
+	Groups            []string          `json:"groups,omitempty"`
+	Sharding          *Sharding         `json:"sharding,omitempty"`
+	Private           *Private          `json:"private,omitempty"`
 	Image             string            `json:"image,omitempty"`
 	Command           []string          `json:"command,omitempty"`
 	Args              []string          `json:"args,omitempty"`
@@ -189,17 +234,23 @@ func (s PoolSpec) Validate() []FieldError {
 	default:
 		add("mode", "must be dynamic or static")
 	}
-	switch s.Driver {
-	case "kubernetes":
-		if s.Image == "" {
-			add("image", "is required for the kubernetes driver")
+	if s.Driver != "" && s.Placement.Driver != "" && s.Driver != s.Placement.Driver {
+		add("driver", "conflicts with placement.driver; set only placement.driver")
+	}
+	switch s.EffectiveDriver() {
+	case DriverKubernetes:
+		if s.Environment == "" && s.Image == "" {
+			add("image", "is required for the kubernetes driver without an environment")
 		}
-	case "process":
-		if len(s.Command) == 0 {
-			add("command", "is required for the process driver")
+	case DriverProcess, DriverAgent:
+		if s.Environment == "" && len(s.Command) == 0 {
+			add("command", "is required for the "+s.EffectiveDriver()+" driver without an environment")
+		}
+		if s.EffectiveDriver() == DriverAgent && s.EffectivePlacement().Host == "" {
+			add("placement.host", "is required for the agent driver")
 		}
 	default:
-		add("driver", "must be kubernetes or process")
+		add("placement.driver", "must be kubernetes, agent or process")
 	}
 	if s.Resources.MemoryMiB <= 0 {
 		add("resources.memoryMiB", "must be greater than 0")
@@ -230,10 +281,23 @@ func (s PoolSpec) Validate() []FieldError {
 	return errs
 }
 
+// EffectivePlacement returns the placement with the v1 driver filled in when placement.driver is empty.
+func (s PoolSpec) EffectivePlacement() Placement {
+	p := s.Placement
+	if p.Driver == "" {
+		p.Driver = s.Driver
+	}
+	return p
+}
+
+// EffectiveDriver is placement.driver, or the v1 driver when placement is empty.
+func (s PoolSpec) EffectiveDriver() string { return s.EffectivePlacement().Driver }
+
 // Pool is a stored pool with its spec generation; Generation increases on every spec change.
 type Pool struct {
 	Name        string    `json:"name"`
 	Spec        PoolSpec  `json:"spec"`
+	Source      Source    `json:"source,omitempty"`
 	Generation  int64     `json:"generation"`
 	Maintenance bool      `json:"maintenance"`
 	CreatedAt   time.Time `json:"createdAt"`
@@ -270,6 +334,8 @@ const (
 	EventPoolUpdated     = "pool.updated"
 	EventPoolScaled      = "pool.scaled"
 	EventTemplateTagged  = "template.tagged"
+	EventNetworkPlayers  = "network.players"
+	EventPoolCondition   = "pool.condition"
 	EventResync          = "resync"
 )
 
@@ -300,6 +366,20 @@ type PoolScaledData struct {
 	Desired   int            `json:"desired"`
 	Current   int            `json:"current"`
 	Inputs    map[string]int `json:"inputs"`
+}
+
+// NetworkStatus is the player count summed over all Ready and Allocated proxy instances.
+type NetworkStatus struct {
+	Players    int `json:"players"`
+	MaxPlayers int `json:"maxPlayers"`
+	Proxies    int `json:"proxies"`
+}
+
+// PoolConditionData is the payload of pool.condition: a pool cannot start instances for the given reason.
+type PoolConditionData struct {
+	Pool    string `json:"pool"`
+	Type    string `json:"type"`
+	Message string `json:"message"`
 }
 
 // Publisher sends events to stream subscribers. Implemented by events.Hub.
