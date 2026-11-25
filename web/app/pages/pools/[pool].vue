@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="mb-2">
-      <IconButton icon="mdi-arrow-left" :label="$t('pools.back')" to="/pools" />
+      <M3IconButton icon="mdi-arrow-left" :label="$t('pools.back')" to="/pools" />
     </div>
 
     <template v-if="pool">

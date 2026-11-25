@@ -8,6 +8,13 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   telemetry: false,
 
+  // Area components keep their own names (PoolTable, not PoolsPoolTable); m3/ keeps its M3 prefix.
+  components: [
+    { path: '~/components/pools', pathPrefix: false },
+    { path: '~/components/templates', pathPrefix: false },
+    '~/components',
+  ],
+
   modules: [
     '@nuxt/eslint',
     '@nuxtjs/i18n',
