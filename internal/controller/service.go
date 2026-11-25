@@ -20,12 +20,23 @@ var (
 	ErrNotFound = errors.New("not found")
 	// ErrLimit: the namespace instance limit would be exceeded (HTTP 409).
 	ErrLimit = errors.New("instance limit reached")
+	// ErrManagedElsewhere: the object is owned by Kubernetes and cannot be changed through the API (HTTP 409).
+	ErrManagedElsewhere = errors.New("managed by kubernetes")
 )
 
-// ValidationError carries field errors of a pool spec (HTTP 422).
-type ValidationError struct{ Fields []model.FieldError }
+// ValidationError carries field errors of a pool, environment or group spec (HTTP 422).
+type ValidationError struct {
+	// Kind names the invalid object ("pool", "environment", "group"); empty means pool.
+	Kind   string
+	Fields []model.FieldError
+}
 
-func (e *ValidationError) Error() string { return "invalid pool spec" }
+func (e *ValidationError) Error() string {
+	if e.Kind == "" {
+		return "invalid pool spec"
+	}
+	return "invalid " + e.Kind + " spec"
+}
 
 // StatusUpdate is the body of PUT /v1/self/status (and the admin debug variant).
 type StatusUpdate struct {
@@ -49,6 +60,19 @@ type Service interface {
 	DeletePool(ctx context.Context, name string, drain bool) error
 	SetMaintenance(ctx context.Context, name string, enabled bool) (model.Pool, error)
 
+	PutEnvironment(ctx context.Context, name string, spec model.EnvironmentSpec) (model.Environment, error)
+	GetEnvironment(ctx context.Context, name string) (model.Environment, error)
+	ListEnvironments(ctx context.Context) ([]model.Environment, error)
+	DeleteEnvironment(ctx context.Context, name string) error
+
+	PutGroup(ctx context.Context, name string, spec model.GroupSpec) (model.Group, error)
+	GetGroup(ctx context.Context, name string) (model.Group, error)
+	ListGroups(ctx context.Context) ([]model.Group, error)
+	DeleteGroup(ctx context.Context, name string) error
+
+	// Network sums the players of all Ready and Allocated proxy instances.
+	Network(ctx context.Context) (model.NetworkStatus, error)
+
 	ListInstances(ctx context.Context, f store.InstanceFilter) ([]model.Instance, error)
 	GetInstance(ctx context.Context, id string) (model.Instance, error)
 	CreateInstance(ctx context.Context, pool string) (model.Instance, error)
@@ -62,4 +86,16 @@ type Service interface {
 	SelfStatus(ctx context.Context, id string, u StatusUpdate) (model.Instance, error)
 	SelfAllocate(ctx context.Context, id string) (model.Instance, error)
 	SelfShutdown(ctx context.Context, id string) (model.Instance, error)
+}
+
+// Applier is the entry point for declaration sources other than the REST API (the Kubernetes CRD watcher,
+// declaration files). The source owns what it applies: an object whose stored source is kubernetes can only
+// be changed or removed by the kubernetes source, everything else fails with ErrManagedElsewhere.
+type Applier interface {
+	ApplyPool(ctx context.Context, source model.Source, name string, spec model.PoolSpec) (model.Pool, error)
+	RemovePool(ctx context.Context, source model.Source, name string, drain bool) error
+	ApplyEnvironment(ctx context.Context, source model.Source, name string, spec model.EnvironmentSpec) (model.Environment, error)
+	RemoveEnvironment(ctx context.Context, source model.Source, name string) error
+	ApplyGroup(ctx context.Context, source model.Source, name string, spec model.GroupSpec) (model.Group, error)
+	RemoveGroup(ctx context.Context, source model.Source, name string) error
 }
