@@ -1,0 +1,142 @@
+# GoReleaser v2 configuration for the Grus command line tools.
+# CI builds a snapshot on every pull request and main push (.github/workflows/cli.yml) and a real
+# release when release-please cuts a tag. Check changes locally with `goreleaser check`.
+version: 2
+
+project_name: grus
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: grus
+    main: ./cmd/grus
+    binary: grus
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    # The controller half of the binary pulls in the process driver, which uses unix process groups
+    # and does not compile for windows yet. Drop this block once the driver builds there.
+    ignore:
+      - goos: windows
+
+  # The agent runs game servers as local processes on a host; it has no windows build.
+  - id: grus-agent
+    main: ./cmd/grus-agent
+    binary: grus-agent
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+  - id: grus-stub-server
+    main: ./cmd/grus-stub-server
+    binary: grus-stub-server
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: grus
+    ids: [grus]
+    name_template: "grus_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+  - id: grus-agent
+    ids: [grus-agent]
+    name_template: "grus-agent_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - README.md
+
+  - id: grus-stub-server
+    ids: [grus-stub-server]
+    name_template: "grus-stub-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}"
+
+# release-please writes the changelog and creates the GitHub release; GoReleaser only attaches assets.
+changelog:
+  disable: true
+
+release:
+  mode: keep-existing
+
+nfpms:
+  - id: grus
+    package_name: grus
+    ids: [grus]
+    formats: [deb, rpm]
+    maintainer: OneLiteFeatherNET <noreply@github.com>
+    homepage: https://github.com/OneLiteFeatherNET/grus
+    description: Grus game server orchestration, controller and command line client
+    license: Apache-2.0
+    bindir: /usr/bin
+
+  # The systemd unit of the agent (deploy/agent/grus-agent.service) is not on main yet; add it under
+  # `contents` once it is.
+  - id: grus-agent
+    package_name: grus-agent
+    ids: [grus-agent]
+    formats: [deb, rpm]
+    maintainer: OneLiteFeatherNET <noreply@github.com>
+    homepage: https://github.com/OneLiteFeatherNET/grus
+    description: Grus agent that runs game server instances on a host outside Kubernetes
+    license: Apache-2.0
+    bindir: /usr/bin
+
+# Package manager publishing stays off until the tap and bucket repositories exist. Remove
+# skip_upload (and give the workflow a token that can push to them) when they do.
+homebrew_casks:
+  - name: grus
+    ids: [grus]
+    skip_upload: true
+    repository:
+      owner: OneLiteFeatherNET
+      name: homebrew-tap
+    homepage: https://github.com/OneLiteFeatherNET/grus
+    description: Grus game server orchestration command line client
+
+# Scoop needs a windows archive of grus, which does not exist yet (see the ignore rule above).
+# Enable this block together with the windows build; upload stays off until the bucket exists.
+# scoops:
+#   - ids: [grus]
+#     skip_upload: true
+#     repository:
+#       owner: OneLiteFeatherNET
+#       name: scoop-bucket
+#     homepage: https://github.com/OneLiteFeatherNET/grus
+#     description: Grus game server orchestration command line client
+#     license: Apache-2.0
