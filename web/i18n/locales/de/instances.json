@@ -2,7 +2,7 @@
   "instances": {
     "title": "Instanzen",
     "subtitle": "Lebenszyklus der laufenden Server",
-    "placeholder": "Die Instanzliste folgt in Kürze",
+    "empty": "Keine Instanz passt zum Filter",
     "states": {
       "Requested": "Angefordert",
       "Scheduled": "Eingeplant",
@@ -16,6 +16,59 @@
       "Stopped": "Gestoppt",
       "Failed": "Fehlgeschlagen",
       "Lost": "Verloren"
+    },
+    "filter": {
+      "pool": "Pool",
+      "state": "Status",
+      "all": "Alle"
+    },
+    "columns": {
+      "name": "Name",
+      "pool": "Pool",
+      "state": "Status",
+      "address": "Adresse",
+      "players": "Spieler",
+      "age": "Alter"
+    },
+    "removed": "Diese Instanz wurde entfernt",
+    "back": "Zurück zu den Instanzen",
+    "detail": {
+      "subtitle": "Details, Statusverlauf und Live-Log",
+      "details": "Details",
+      "fields": {
+        "id": "ID",
+        "pool": "Pool",
+        "role": "Rolle",
+        "poolGeneration": "Pool-Generation",
+        "state": "Status",
+        "stateReason": "Grund",
+        "stateSince": "Status seit",
+        "host": "Host",
+        "address": "Adresse",
+        "players": "Spieler",
+        "lastHeartbeat": "Letzter Heartbeat",
+        "allocatedAt": "Zugewiesen am",
+        "createdAt": "Erstellt am",
+        "driverRef": "Treiber-Referenz",
+        "labels": "Labels"
+      },
+      "history": "Statusverlauf",
+      "historyEmpty": "Seit dem Öffnen dieser Seite gab es keine Statuswechsel",
+      "logs": "Log",
+      "logStatus": {
+        "connecting": "Verbindung zum Log wird aufgebaut",
+        "open": "Log wird live verfolgt",
+        "closed": "Log-Stream beendet"
+      },
+      "resumeScroll": "Zum Ende springen",
+      "commandLabel": "Konsolenbefehl",
+      "commandPlaceholder": "Befehl eingeben",
+      "send": "Senden",
+      "commandSent": "Befehl gesendet",
+      "stop": "Stoppen",
+      "stopTitle": "Diese Instanz stoppen?",
+      "stopMessage": "Die Instanz wird gestoppt. Verbundene Spieler werden vor dem Stopp geleert, wenn die Instanz bereit ist.",
+      "stopped": "Stopp angefordert"
     }
   }
 }

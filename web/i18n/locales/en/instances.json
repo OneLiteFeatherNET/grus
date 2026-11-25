@@ -2,7 +2,7 @@
   "instances": {
     "title": "Instances",
     "subtitle": "Lifecycle of the running servers",
-    "placeholder": "The instance list is coming soon",
+    "empty": "No instances match the filter",
     "states": {
       "Requested": "Requested",
       "Scheduled": "Scheduled",
@@ -16,6 +16,59 @@
       "Stopped": "Stopped",
       "Failed": "Failed",
       "Lost": "Lost"
+    },
+    "filter": {
+      "pool": "Pool",
+      "state": "State",
+      "all": "All"
+    },
+    "columns": {
+      "name": "Name",
+      "pool": "Pool",
+      "state": "State",
+      "address": "Address",
+      "players": "Players",
+      "age": "Age"
+    },
+    "removed": "This instance has been removed",
+    "back": "Back to instances",
+    "detail": {
+      "subtitle": "Details, state history and live log",
+      "details": "Details",
+      "fields": {
+        "id": "ID",
+        "pool": "Pool",
+        "role": "Role",
+        "poolGeneration": "Pool generation",
+        "state": "State",
+        "stateReason": "Reason",
+        "stateSince": "State since",
+        "host": "Host",
+        "address": "Address",
+        "players": "Players",
+        "lastHeartbeat": "Last heartbeat",
+        "allocatedAt": "Allocated at",
+        "createdAt": "Created at",
+        "driverRef": "Driver reference",
+        "labels": "Labels"
+      },
+      "history": "State history",
+      "historyEmpty": "No state changes since this page was opened",
+      "logs": "Log",
+      "logStatus": {
+        "connecting": "Connecting to the log",
+        "open": "Following the log",
+        "closed": "Log stream closed"
+      },
+      "resumeScroll": "Jump to latest",
+      "commandLabel": "Console command",
+      "commandPlaceholder": "Type a command",
+      "send": "Send",
+      "commandSent": "Command sent",
+      "stop": "Stop",
+      "stopTitle": "Stop this instance?",
+      "stopMessage": "The instance will be stopped. Players online are drained first where the instance is ready.",
+      "stopped": "Stop requested"
     }
   }
 }
