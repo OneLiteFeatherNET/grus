@@ -1,7 +1,18 @@
 {
   "templates": {
     "title": "Templates",
-    "subtitle": "Versionen und Tags der Vorlagen",
-    "placeholder": "Die Template-Liste folgt in Kürze"
+    "subtitle": "Versionen, Tags und die Pools, die sie verwenden",
+    "placeholder": "Die Template-Liste folgt in Kürze",
+    "listLabel": "Templates",
+    "empty": "Noch keine Templates vorhanden",
+    "versions": "Versionen",
+    "untagged": "ohne Tag",
+    "noVersions": "Keine Versionen vorhanden.",
+    "copyDigest": "Digest kopieren",
+    "copied": "Digest kopiert",
+    "copyFailed": "Kopieren nicht möglich",
+    "download": "Archiv laden",
+    "usedBy": "Verwendet von",
+    "unused": "Von keinem Pool verwendet."
   }
 }

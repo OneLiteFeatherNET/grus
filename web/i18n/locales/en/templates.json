@@ -1,7 +1,18 @@
 {
   "templates": {
     "title": "Templates",
-    "subtitle": "Versions and tags of the templates",
-    "placeholder": "The template list is coming soon"
+    "subtitle": "Versions, tags and the pools that use them",
+    "placeholder": "The template list is coming soon",
+    "listLabel": "Templates",
+    "empty": "No templates yet",
+    "versions": "Versions",
+    "untagged": "untagged",
+    "noVersions": "No versions yet.",
+    "copyDigest": "Copy digest",
+    "copied": "Digest copied",
+    "copyFailed": "Copying is not possible",
+    "download": "Download archive",
+    "usedBy": "Used by",
+    "unused": "Not used by any pool."
   }
 }
