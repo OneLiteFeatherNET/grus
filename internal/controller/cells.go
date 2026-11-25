@@ -94,6 +94,32 @@ func (c *Controller) assignPoolCells(ctx context.Context, pool string, sh *model
 		}
 	}
 
+	// Rebalance: an instance that became Ready later gets cells from one that holds several. Only an empty
+	// instance triggers a move, so assignments stay stable otherwise.
+	for len(ready) > 1 {
+		most, least := ready[0], ready[0]
+		for _, inst := range ready[1:] {
+			if count[inst.ID] > count[most.ID] {
+				most = inst
+			}
+			if count[inst.ID] < count[least.ID] {
+				least = inst
+			}
+		}
+		if count[least.ID] != 0 || count[most.ID] < 2 {
+			break
+		}
+		moved := ""
+		for cell, id := range assigned {
+			if id == most.ID && cell > moved {
+				moved = cell
+			}
+		}
+		assigned[moved] = least.ID
+		count[most.ID]--
+		count[least.ID]++
+	}
+
 	changed := false
 	for _, inst := range insts {
 		var mine []string

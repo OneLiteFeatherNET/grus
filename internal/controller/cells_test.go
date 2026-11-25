@@ -194,3 +194,44 @@ func TestRemovedCellsLoseTheirLabel(t *testing.T) {
 		t.Fatalf("owners = %v, want only r1", owners)
 	}
 }
+
+func TestLateReadyInstanceGetsOneOfTwoCells(t *testing.T) {
+	f := newFixture(t, Config{})
+	f.putPool("world", shardedSpec(2, cellR0, cellR1))
+	f.reconcile()
+	started := f.drv.Started()
+	first, second := started[0].Instance.ID, started[1].Instance.ID
+	f.bringUp(first, "10.0.0.1:25565")
+	f.reconcile()
+	if owners := f.cellOwners(); owners["r0"] != first || owners["r1"] != first {
+		t.Fatalf("owners = %v, want the only Ready instance to hold both cells", owners)
+	}
+
+	f.bringUp(second, "10.0.0.2:25565")
+	f.reconcile()
+
+	owners := f.cellOwners()
+	if owners["r0"] != first || owners["r1"] != second {
+		t.Fatalf("owners = %v, want r0 kept by %s and r1 (last by name) moved to %s", owners, first, second)
+	}
+	events := f.pub.count(model.EventPoolCells)
+	f.reconcile()
+	if f.pub.count(model.EventPoolCells) != events {
+		t.Errorf("pool.cells published again although nothing changed")
+	}
+}
+
+func TestBalancedCellsAreNotMoved(t *testing.T) {
+	f := newFixture(t, Config{})
+	f.putPool("world", shardedSpec(2, cellR0, cellR1, cellR2))
+	f.readyInstances("world", 2)
+	before := f.cellOwners()
+
+	f.reconcile()
+
+	for cell, id := range f.cellOwners() {
+		if before[cell] != id {
+			t.Errorf("cell %s moved from %s to %s although counts differ by one", cell, before[cell], id)
+		}
+	}
+}
