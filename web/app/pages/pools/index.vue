@@ -1,14 +1,14 @@
 <template>
   <div>
-    <PageHeader :title="$t('pools.title')" :subtitle="$t('pools.subtitle')">
+    <M3PageHeader :title="$t('pools.title')" :subtitle="$t('pools.subtitle')">
       <template #actions>
         <span class="text-label-medium text-on-surface-variant" data-test="live-status">
           {{ $t(`common.live.${status}`) }}
         </span>
       </template>
-    </PageHeader>
+    </M3PageHeader>
 
-    <AppProblem :error="error" />
+    <M3Problem :error="error" />
 
     <PoolTable v-if="pools.length" :pools="pools" :instances="instances" />
     <M3EmptyState v-else-if="!pending && !error" :title="$t('pools.empty')" icon="mdi-layers-outline" />

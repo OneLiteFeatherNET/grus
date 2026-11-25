@@ -1,7 +1,5 @@
 <template>
-  <M3Chip :tone="tone" :icon="icon" small>
-    {{ label }}
-  </M3Chip>
+  <M3StatusChip :tone="tone" :label="label" :icon="icon" />
 </template>
 
 <script setup lang="ts">

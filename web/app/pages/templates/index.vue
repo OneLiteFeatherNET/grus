@@ -1,14 +1,14 @@
 <template>
   <div>
-    <PageHeader :title="$t('templates.title')" :subtitle="$t('templates.subtitle')">
+    <M3PageHeader :title="$t('templates.title')" :subtitle="$t('templates.subtitle')">
       <template #actions>
         <span class="text-label-medium text-on-surface-variant" data-test="live-status">
           {{ $t(`common.live.${status}`) }}
         </span>
       </template>
-    </PageHeader>
+    </M3PageHeader>
 
-    <AppProblem :error="error" />
+    <M3Problem :error="error" />
 
     <section v-if="views.length" class="grid gap-4 lg:grid-cols-2" :aria-label="$t('templates.listLabel')">
       <TemplateCard v-for="view in views" :key="view.name" :view="view" />

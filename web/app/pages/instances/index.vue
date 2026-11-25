@@ -1,14 +1,14 @@
 <template>
   <div>
-    <PageHeader :title="$t('instances.title')" :subtitle="$t('instances.subtitle')">
+    <M3PageHeader :title="$t('instances.title')" :subtitle="$t('instances.subtitle')">
       <template #actions>
         <span class="text-label-medium text-on-surface-variant" data-test="live-status">
           {{ $t(`common.live.${status}`) }}
         </span>
       </template>
-    </PageHeader>
+    </M3PageHeader>
 
-    <AppProblem :error="error" />
+    <M3Problem :error="error" />
 
     <form class="mb-4 flex flex-wrap items-end gap-3" role="search" @submit.prevent>
       <label class="flex flex-col gap-1 text-label-medium text-on-surface-variant">

@@ -1,15 +1,15 @@
 <template>
   <div>
-    <PageHeader :title="id" :subtitle="$t('instances.detail.subtitle')">
+    <M3PageHeader :title="id" :subtitle="$t('instances.detail.subtitle')">
       <template #actions>
         <NuxtLink to="/instances" class="text-label-large text-primary">{{ $t('instances.back') }}</NuxtLink>
         <span class="text-label-medium text-on-surface-variant" data-test="live-status">
           {{ $t(`common.live.${status}`) }}
         </span>
       </template>
-    </PageHeader>
+    </M3PageHeader>
 
-    <AppProblem :error="error" />
+    <M3Problem :error="error" />
     <M3Alert v-if="removed" tone="warning" class="mb-4" data-test="removed-notice">
       {{ $t('instances.removed') }}
     </M3Alert>
@@ -35,7 +35,7 @@
             {{ $t('instances.detail.stop') }}
           </M3Button>
         </div>
-        <AppProblem :error="stopError" class="mt-3" />
+        <M3Problem :error="stopError" class="mt-3" />
       </M3Card>
 
       <M3Card variant="elevated" :title="$t('instances.detail.history')">
@@ -83,17 +83,17 @@
             {{ $t('instances.detail.send') }}
           </M3Button>
         </form>
-        <AppProblem :error="commandError" class="mt-3" />
+        <M3Problem :error="commandError" class="mt-3" />
       </M3Card>
     </div>
 
-    <ConfirmDialog
+    <M3ConfirmDialog
       v-model="stopOpen"
       :title="$t('instances.detail.stopTitle')"
       :message="$t('instances.detail.stopMessage')"
       :confirm-label="$t('instances.detail.stop')"
-      tone="error"
-      :busy="stopping"
+      danger
+      :loading="stopping"
       @confirm="stop"
     />
   </div>

@@ -1,14 +1,17 @@
+# syntax=docker/dockerfile:1
 # Grus web UI: Nuxt node-server build (BFF plus SPA) on a distroless Node runtime.
 # Build from the repository root, so the image is built from the same context as the controller:
-#   docker build -f web/Dockerfile -t grus-web .
+#   docker build --secret id=npm_token,env=NODE_AUTH_TOKEN -f web/Dockerfile -t grus-web .
+# The build needs the secret `npm_token`: a token with read:packages, to install @onelitefeathernet/pavo from
+# GitHub Packages. It is mounted for the install step only and never written into an image layer.
 # Runtime settings come from the environment (NUXT_GRUS_API_URL, NUXT_GRUS_TOKEN), nothing is baked in.
 
 FROM node:24-alpine AS build
 WORKDIR /app
 RUN corepack enable
-COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml web/.npmrc ./
 # `nuxt prepare` (postinstall) needs the sources, so install without scripts first.
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN --mount=type=secret,id=npm_token,env=NODE_AUTH_TOKEN pnpm install --frozen-lockfile --ignore-scripts
 COPY web/ ./
 RUN pnpm exec nuxt prepare && pnpm build
 

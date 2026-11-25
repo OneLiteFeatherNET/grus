@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader :title="$t('events.title')" :subtitle="$t('events.subtitle')">
+    <M3PageHeader :title="$t('events.title')" :subtitle="$t('events.subtitle')">
       <template #actions>
         <span class="text-label-medium text-on-surface-variant" data-test="live-status">
           {{ $t(`common.live.${status}`) }}
@@ -18,7 +18,7 @@
           {{ $t('events.clear') }}
         </M3Button>
       </template>
-    </PageHeader>
+    </M3PageHeader>
 
     <section class="mb-4 grid gap-3" :aria-label="$t('events.filterTypes')">
       <div class="flex flex-wrap gap-2" role="group" :aria-label="$t('events.filterTypes')">
