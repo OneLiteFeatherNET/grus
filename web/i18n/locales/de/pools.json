@@ -1,7 +1,122 @@
 {
   "pools": {
     "title": "Pools",
-    "subtitle": "Skalierung, Wartung und Instanzen je Pool",
-    "placeholder": "Die Pool-Liste folgt in Kürze"
+    "subtitle": "Skalierung, Wartung und Instanzen pro Pool",
+    "empty": "Noch keine Pools",
+    "back": "Zurück zu den Pools",
+    "table": {
+      "name": "Pool",
+      "role": "Rolle",
+      "mode": "Modus",
+      "driver": "Treiber",
+      "scaling": "Min / Max / Puffer",
+      "instances": "Bereit / gesamt",
+      "maintenance": "Wartung"
+    },
+    "badges": {
+      "maintenance": "Wartung"
+    },
+    "age": {
+      "s": "{value} s",
+      "m": "{value} min",
+      "h": "{value} h",
+      "d": "{value} d"
+    },
+    "spec": {
+      "heading": "Spezifikation",
+      "role": "Rolle",
+      "mode": "Modus",
+      "driver": "Treiber",
+      "image": "Image",
+      "command": "Befehl",
+      "args": "Argumente",
+      "port": "Port",
+      "priorityClassName": "Prioritätsklasse",
+      "memoryMiB": "Arbeitsspeicher (MiB)",
+      "cpu": "CPU",
+      "templates": "Templates",
+      "env": "Umgebungsvariablen",
+      "secretEnv": "Geheime Umgebungsvariablen",
+      "stopCommand": "Stopp-Befehl",
+      "gracePeriod": "Schonfrist",
+      "heartbeatTimeout": "Heartbeat-Timeout",
+      "startTimeout": "Start-Timeout",
+      "labels": "Labels",
+      "min": "Min",
+      "max": "Max",
+      "buffer": "Puffer",
+      "capacity": "Kapazität",
+      "targetUtilization": "Zielauslastung",
+      "scaleDownDelay": "Verzögerung beim Herunterskalieren",
+      "drainTimeout": "Drain-Timeout",
+      "maxSurge": "Max. Überhang",
+      "none": "nicht gesetzt",
+      "sections": {
+        "basics": "Grundlagen",
+        "run": "Ausführung",
+        "resources": "Ressourcen",
+        "templates": "Templates",
+        "scaling": "Skalierung",
+        "lifecycle": "Lebenszyklus",
+        "labels": "Labels"
+      }
+    },
+    "scaling": {
+      "heading": "Skalierung",
+      "help": "Die Spezifikation wird als Ganzes gespeichert. Hier ändern sich nur die Skalierungswerte.",
+      "fields": {
+        "min": "Mindestanzahl Instanzen",
+        "max": "Höchstanzahl Instanzen",
+        "buffer": "Puffer",
+        "capacity": "Kapazität",
+        "targetUtilization": "Zielauslastung",
+        "scaleDownDelay": "Verzögerung beim Herunterskalieren",
+        "drainTimeout": "Drain-Timeout",
+        "maxSurge": "Max. Überhang"
+      },
+      "hints": {
+        "duration": "Go-Dauer, zum Beispiel 30s, 5m oder 1h30m. Leer lässt den Standard.",
+        "optional": "Leer lässt den Standardwert des Servers.",
+        "targetUtilization": "Zwischen 0 und 1, zum Beispiel 0.8.",
+        "buffer": "Bei statischen Pools muss der Puffer 0 sein."
+      },
+      "errors": {
+        "required": "Pflichtfeld.",
+        "integer": "Bitte eine ganze Zahl von 0 oder mehr eingeben.",
+        "number": "Bitte eine Zahl eingeben.",
+        "range": "Muss größer als 0 und höchstens 1 sein.",
+        "maxBelowMin": "Darf nicht kleiner als das Minimum sein.",
+        "staticBuffer": "Statische Pools brauchen einen Puffer von 0.",
+        "duration": "Bitte eine Dauer wie 30s, 5m oder 1h30m eingeben."
+      },
+      "save": "Skalierung speichern",
+      "reset": "Zurücksetzen",
+      "unsaved": "Ungespeicherte Änderungen"
+    },
+    "maintenance": {
+      "enable": "Wartung aktivieren",
+      "disable": "Wartung beenden",
+      "enableTitle": "Wartung für {pool} aktivieren?",
+      "disableTitle": "Wartung für {pool} beenden?",
+      "enableMessage": "Solange die Wartung läuft, startet der Pool keine neuen Instanzen. Laufende Instanzen bleiben aktiv.",
+      "disableMessage": "Der Pool skaliert danach wieder."
+    },
+    "confirm": {
+      "saveTitle": "Skalierung für {pool} speichern?",
+      "saveMessage": "Die Skalierungswerte werden auf den Pool angewendet. Der Rest der Spezifikation bleibt unverändert."
+    },
+    "instances": {
+      "heading": "Instanzen",
+      "empty": "Keine Instanzen in diesem Pool",
+      "id": "Instanz",
+      "state": "Status",
+      "players": "Spieler",
+      "address": "Adresse",
+      "age": "Alter"
+    },
+    "saved": "Skalierung gespeichert",
+    "maintenanceOn": "Wartung aktiviert",
+    "maintenanceOff": "Wartung beendet",
+    "notFound": "Dieser Pool existiert nicht"
   }
 }

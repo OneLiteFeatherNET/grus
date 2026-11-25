@@ -2,6 +2,121 @@
   "pools": {
     "title": "Pools",
     "subtitle": "Scaling, maintenance and instances per pool",
-    "placeholder": "The pool list is coming soon"
+    "empty": "No pools yet",
+    "back": "Back to pools",
+    "table": {
+      "name": "Pool",
+      "role": "Role",
+      "mode": "Mode",
+      "driver": "Driver",
+      "scaling": "Min / max / buffer",
+      "instances": "Ready / total",
+      "maintenance": "Maintenance"
+    },
+    "badges": {
+      "maintenance": "Maintenance"
+    },
+    "age": {
+      "s": "{value} s",
+      "m": "{value} min",
+      "h": "{value} h",
+      "d": "{value} d"
+    },
+    "spec": {
+      "heading": "Spec",
+      "role": "Role",
+      "mode": "Mode",
+      "driver": "Driver",
+      "image": "Image",
+      "command": "Command",
+      "args": "Arguments",
+      "port": "Port",
+      "priorityClassName": "Priority class",
+      "memoryMiB": "Memory (MiB)",
+      "cpu": "CPU",
+      "templates": "Templates",
+      "env": "Environment",
+      "secretEnv": "Secret environment",
+      "stopCommand": "Stop command",
+      "gracePeriod": "Grace period",
+      "heartbeatTimeout": "Heartbeat timeout",
+      "startTimeout": "Start timeout",
+      "labels": "Labels",
+      "min": "Min",
+      "max": "Max",
+      "buffer": "Buffer",
+      "capacity": "Capacity",
+      "targetUtilization": "Target utilization",
+      "scaleDownDelay": "Scale-down delay",
+      "drainTimeout": "Drain timeout",
+      "maxSurge": "Max surge",
+      "none": "not set",
+      "sections": {
+        "basics": "Basics",
+        "run": "Run",
+        "resources": "Resources",
+        "templates": "Templates",
+        "scaling": "Scaling",
+        "lifecycle": "Lifecycle",
+        "labels": "Labels"
+      }
+    },
+    "scaling": {
+      "heading": "Scaling",
+      "help": "The spec is saved as a whole. Only the scaling values change here.",
+      "fields": {
+        "min": "Minimum instances",
+        "max": "Maximum instances",
+        "buffer": "Buffer",
+        "capacity": "Capacity",
+        "targetUtilization": "Target utilization",
+        "scaleDownDelay": "Scale-down delay",
+        "drainTimeout": "Drain timeout",
+        "maxSurge": "Max surge"
+      },
+      "hints": {
+        "duration": "Go duration, for example 30s, 5m or 1h30m. Empty keeps the default.",
+        "optional": "Empty keeps the server default.",
+        "targetUtilization": "Between 0 and 1, for example 0.8.",
+        "buffer": "Must be 0 for static pools."
+      },
+      "errors": {
+        "required": "Required.",
+        "integer": "Enter a whole number, 0 or more.",
+        "number": "Enter a number.",
+        "range": "Must be above 0 and at most 1.",
+        "maxBelowMin": "Must not be below the minimum.",
+        "staticBuffer": "Static pools need a buffer of 0.",
+        "duration": "Enter a duration such as 30s, 5m or 1h30m."
+      },
+      "save": "Save scaling",
+      "reset": "Reset",
+      "unsaved": "Unsaved changes"
+    },
+    "maintenance": {
+      "enable": "Enable maintenance",
+      "disable": "Disable maintenance",
+      "enableTitle": "Enable maintenance for {pool}?",
+      "disableTitle": "Disable maintenance for {pool}?",
+      "enableMessage": "While maintenance is on, the pool does not start new instances. Existing instances keep running.",
+      "disableMessage": "The pool starts scaling again."
+    },
+    "confirm": {
+      "saveTitle": "Save scaling for {pool}?",
+      "saveMessage": "The scaling values are applied to the pool. The rest of the spec stays as it is."
+    },
+    "instances": {
+      "heading": "Instances",
+      "empty": "No instances in this pool",
+      "id": "Instance",
+      "state": "State",
+      "players": "Players",
+      "address": "Address",
+      "age": "Age"
+    },
+    "saved": "Scaling saved",
+    "maintenanceOn": "Maintenance enabled",
+    "maintenanceOff": "Maintenance disabled",
+    "notFound": "This pool does not exist"
   }
 }
