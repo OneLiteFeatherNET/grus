@@ -79,7 +79,7 @@ func importTar(t *testing.T, s *FS, name string, archive []byte) Version {
 
 func readManifest(t *testing.T, s *FS, name, digest string) Manifest {
 	t.Helper()
-	m, err := s.readManifest(name, digest)
+	m, err := s.readManifest(context.Background(), name, digest)
 	if err != nil {
 		t.Fatalf("readManifest(%s, %s): %v", name, digest, err)
 	}

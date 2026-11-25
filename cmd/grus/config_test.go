@@ -120,3 +120,73 @@ func TestSplitListDropsEmptyEntries(t *testing.T) {
 		t.Errorf("splitList = %v, want [a b]", got)
 	}
 }
+
+func s3Env() map[string]string {
+	env := validEnv()
+	env["GRUS_TEMPLATES_BACKEND"] = "s3"
+	env["GRUS_S3_ENDPOINT"] = "minio.local:9000"
+	env["GRUS_S3_BUCKET"] = "grus-templates-dev"
+	env["GRUS_S3_PREFIX"] = "envs/dev"
+	env["GRUS_S3_INSECURE"] = "true"
+	env["AWS_ACCESS_KEY_ID"] = "access-key-id"
+	env["AWS_SECRET_ACCESS_KEY"] = "secret-access-key-value"
+	return env
+}
+
+func TestLoadConfigTemplatesDefaultToFS(t *testing.T) {
+	cfg, err := loadConfig(nil, fakeEnv(validEnv()))
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if cfg.TemplatesBackend != "fs" {
+		t.Errorf("TemplatesBackend = %q, want fs", cfg.TemplatesBackend)
+	}
+}
+
+func TestLoadConfigReadsS3Settings(t *testing.T) {
+	cfg, err := loadConfig(nil, fakeEnv(s3Env()))
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if cfg.TemplatesBackend != "s3" || cfg.S3Endpoint != "minio.local:9000" || cfg.S3Bucket != "grus-templates-dev" {
+		t.Errorf("s3 settings = %q %q %q", cfg.TemplatesBackend, cfg.S3Endpoint, cfg.S3Bucket)
+	}
+	if cfg.S3Prefix != "envs/dev" || !cfg.S3Insecure {
+		t.Errorf("S3Prefix = %q, S3Insecure = %v, want envs/dev and true", cfg.S3Prefix, cfg.S3Insecure)
+	}
+	if cfg.S3AccessKey != "access-key-id" || cfg.S3SecretKey != "secret-access-key-value" {
+		t.Error("S3 credentials were not read from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	}
+}
+
+func TestLoadConfigRejectsInvalidTemplateBackends(t *testing.T) {
+	cases := map[string]func(env map[string]string){
+		"unknown backend":       func(env map[string]string) { env["GRUS_TEMPLATES_BACKEND"] = "gcs" },
+		"s3 without endpoint":   func(env map[string]string) { delete(env, "GRUS_S3_ENDPOINT") },
+		"s3 without bucket":     func(env map[string]string) { delete(env, "GRUS_S3_BUCKET") },
+		"s3 without access key": func(env map[string]string) { delete(env, "AWS_ACCESS_KEY_ID") },
+		"s3 without secret key": func(env map[string]string) { delete(env, "AWS_SECRET_ACCESS_KEY") },
+		"invalid insecure flag": func(env map[string]string) { env["GRUS_S3_INSECURE"] = "sometimes" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			env := s3Env()
+			mutate(env)
+			if _, err := loadConfig(nil, fakeEnv(env)); err == nil {
+				t.Fatalf("loadConfig accepted %s", name)
+			}
+		})
+	}
+}
+
+func TestLoadConfigErrorsNeverContainS3Secret(t *testing.T) {
+	env := s3Env()
+	delete(env, "GRUS_S3_BUCKET")
+	_, err := loadConfig(nil, fakeEnv(env))
+	if err == nil {
+		t.Fatal("loadConfig accepted a missing bucket")
+	}
+	if strings.Contains(err.Error(), "secret-access-key-value") {
+		t.Fatalf("error leaks the secret key: %v", err)
+	}
+}

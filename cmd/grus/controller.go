@@ -53,7 +53,7 @@ func newStack(ctx context.Context, cfg config, logger *slog.Logger) (*stack, err
 	if err != nil {
 		return nil, fmt.Errorf("open store: %w", err)
 	}
-	tpl, err := templates.NewFS(cfg.TemplatesDir)
+	tpl, err := openTemplates(cfg)
 	if err != nil {
 		_ = st.Close()
 		return nil, fmt.Errorf("open templates: %w", err)
@@ -83,6 +83,29 @@ func newStack(ctx context.Context, cfg config, logger *slog.Logger) (*stack, err
 		Version:        version,
 	}, ctrl, tpl, hub.Handler(sseHeartbeat), logger)
 	return &stack{store: st, tpl: tpl, drv: drv, hub: hub, ctrl: ctrl, handler: handler}, nil
+}
+
+// openTemplates opens the template store of the configured backend: fs (default) or s3.
+func openTemplates(cfg config) (templates.Store, error) {
+	if cfg.TemplatesBackend == "s3" {
+		s, err := templates.NewS3(templates.S3Config{
+			Endpoint:  cfg.S3Endpoint,
+			Bucket:    cfg.S3Bucket,
+			Prefix:    cfg.S3Prefix,
+			Insecure:  cfg.S3Insecure,
+			AccessKey: cfg.S3AccessKey,
+			SecretKey: cfg.S3SecretKey,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return s, nil
+	}
+	s, err := templates.NewFS(cfg.TemplatesDir)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // runController is the `grus controller` subcommand. SIGINT or SIGTERM stops the HTTP server and the

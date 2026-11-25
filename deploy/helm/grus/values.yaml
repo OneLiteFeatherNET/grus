@@ -124,4 +124,20 @@ web:
 #           content: |
 #             motd=Lobby
 templates:
+  # Template store backend: fs (the file store on the data volume, default) or s3 (an S3 bucket, for
+  # example a Rook ObjectBucketClaim). The database stays on the data volume either way.
+  backend: fs
+  s3:
+    # Endpoint as host:port or an http(s) URL. Empty takes BUCKET_HOST:BUCKET_PORT from existingConfigMap.
+    endpoint: ""
+    # Bucket name. Empty takes BUCKET_NAME from existingConfigMap.
+    bucket: ""
+    # Key prefix inside the bucket, optional.
+    prefix: ""
+    # Plain HTTP for a host:port endpoint, for example the in-cluster Rook RGW on port 80.
+    insecure: false
+    # Existing Secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (the Rook OBC Secret).
+    existingSecret: ""
+    # Existing ConfigMap with BUCKET_NAME, BUCKET_HOST and BUCKET_PORT (the Rook OBC ConfigMap).
+    existingConfigMap: ""
   seed: {}

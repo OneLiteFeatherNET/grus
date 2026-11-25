@@ -59,6 +59,61 @@ spec:
             - name: GRUS_TEMPLATE_SEED_DIR
               value: /etc/grus/seed
             {{- end }}
+            {{- $s3 := .Values.templates.s3 }}
+            {{- if eq .Values.templates.backend "s3" }}
+            {{- $_ := required "templates.s3.existingSecret is required when templates.backend is s3" $s3.existingSecret }}
+            {{- if not (or $s3.endpoint $s3.existingConfigMap) }}
+            {{- fail "templates.s3.endpoint or templates.s3.existingConfigMap is required when templates.backend is s3" }}
+            {{- end }}
+            {{- if not (or $s3.bucket $s3.existingConfigMap) }}
+            {{- fail "templates.s3.bucket or templates.s3.existingConfigMap is required when templates.backend is s3" }}
+            {{- end }}
+            - name: GRUS_TEMPLATES_BACKEND
+              value: s3
+            {{- if $s3.existingConfigMap }}
+            - name: BUCKET_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $s3.existingConfigMap | quote }}
+                  key: BUCKET_HOST
+            - name: BUCKET_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $s3.existingConfigMap | quote }}
+                  key: BUCKET_PORT
+            {{- end }}
+            - name: GRUS_S3_ENDPOINT
+              {{- if $s3.endpoint }}
+              value: {{ $s3.endpoint | quote }}
+              {{- else }}
+              value: "$(BUCKET_HOST):$(BUCKET_PORT)"
+              {{- end }}
+            - name: GRUS_S3_BUCKET
+              {{- if $s3.bucket }}
+              value: {{ $s3.bucket | quote }}
+              {{- else }}
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ $s3.existingConfigMap | quote }}
+                  key: BUCKET_NAME
+              {{- end }}
+            - name: GRUS_S3_PREFIX
+              value: {{ $s3.prefix | quote }}
+            - name: GRUS_S3_INSECURE
+              value: {{ ternary "true" "false" $s3.insecure | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $s3.existingSecret | quote }}
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $s3.existingSecret | quote }}
+                  key: AWS_SECRET_ACCESS_KEY
+            {{- else if ne .Values.templates.backend "fs" }}
+            {{- fail "templates.backend must be fs or s3" }}
+            {{- end }}
             - name: GRUS_DRIVER
               value: kubernetes
             - name: GRUS_NAMESPACE
