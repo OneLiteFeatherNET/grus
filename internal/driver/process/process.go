@@ -101,7 +101,8 @@ func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, erro
 	if err := checkID(id); err != nil {
 		return "", err
 	}
-	if len(spec.Pool.Spec.Command) == 0 {
+	eff := spec.EffectiveOrV1()
+	if len(eff.Command) == 0 {
 		return "", errors.New("process: pool spec has no command")
 	}
 	if err := ctx.Err(); err != nil {
@@ -170,8 +171,8 @@ func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, erro
 		return fail(fmt.Errorf("create output pipe: %w", err))
 	}
 
-	args := append(slices.Clone(spec.Pool.Spec.Command[1:]), spec.Pool.Spec.Args...)
-	cmd := exec.Command(spec.Pool.Spec.Command[0], args...)
+	args := append(slices.Clone(eff.Command[1:]), eff.Args...)
+	cmd := exec.Command(eff.Command[0], args...)
 	cmd.Dir = workdir
 	cmd.Env = buildEnv(spec.Env, spec.Token, port)
 	cmd.Stdout = outW
@@ -508,8 +509,8 @@ func buildEnv(extra map[string]string, token string, port int) []string {
 
 // pickPort returns the fixed port of a static pool, or a free loopback port otherwise.
 func pickPort(spec driver.StartSpec) (int, error) {
-	if spec.Pool.Spec.Mode == model.ModeStatic && spec.Pool.Spec.Port > 0 {
-		return spec.Pool.Spec.Port, nil
+	if port := spec.EffectiveOrV1().Port; spec.Pool.Spec.Mode == model.ModeStatic && port > 0 {
+		return port, nil
 	}
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

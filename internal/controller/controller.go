@@ -57,6 +57,8 @@ type Controller struct {
 	trigger       chan struct{}
 	belowSince    map[string]*time.Time // per pool: when desired < active was first seen
 	lastPublished map[string]time.Time  // per instance: last instance.updated from SelfStatus
+	resolveWarned map[string]string     // per pool: last unresolvable reason already reported
+	lastNetwork   model.NetworkStatus   // last network.players payload
 }
 
 // New builds a controller. Call Adopt (or Run, which adopts first) before reconciling.
@@ -87,6 +89,7 @@ func New(cfg Config, st store.Store, drv driver.Driver, tpl templates.Store, pub
 		trigger:       make(chan struct{}, 1),
 		belowSince:    make(map[string]*time.Time),
 		lastPublished: make(map[string]time.Time),
+		resolveWarned: make(map[string]string),
 	}
 }
 
@@ -208,6 +211,9 @@ func (c *Controller) apply(ctx context.Context, inst model.Instance, in state.In
 		Address:  next.Address,
 		Reason:   reason,
 	})
+	if next.Role == model.RoleProxy {
+		c.publishNetwork(ctx)
+	}
 	return next, nil
 }
 
@@ -258,7 +264,12 @@ func (c *Controller) lifecycleOf(ctx context.Context, pool string) model.Lifecyc
 	if err != nil {
 		return model.PoolSpec{}.WithDefaults().Lifecycle
 	}
-	return p.Spec.WithDefaults().Lifecycle
+	lc := p.Spec.WithDefaults().Lifecycle
+	if eff, err := c.effective(ctx, p.Spec); err == nil {
+		lc.StopCommand = eff.StopCommand
+		lc.GracePeriod = eff.GracePeriod
+	}
+	return lc
 }
 
 // createInstance records a new Requested instance, resolves templates, schedules it and starts it through
@@ -266,6 +277,12 @@ func (c *Controller) lifecycleOf(ctx context.Context, pool string) model.Lifecyc
 func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model.Instance, error) {
 	spec := pool.Spec.WithDefaults()
 	now := c.clock.Now()
+
+	eff, err := c.effective(ctx, pool.Spec)
+	c.noteResolve(pool.Name, err)
+	if err != nil {
+		return model.Instance{}, err
+	}
 
 	token, err := newToken()
 	if err != nil {
@@ -279,7 +296,7 @@ func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model
 		return model.Instance{}, err
 	}
 
-	resolved, err := c.resolveTemplates(ctx, spec.Templates)
+	resolved, err := c.resolveTemplates(ctx, eff.Templates)
 	if err != nil {
 		return c.apply(ctx, inst, state.InFailed, "template: "+err.Error())
 	}
@@ -292,7 +309,8 @@ func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model
 		Instance:  inst,
 		Pool:      model.Pool{Name: pool.Name, Spec: spec, Generation: pool.Generation},
 		Token:     token,
-		Env:       instanceEnv(c.cfg.PublicURL, spec, inst),
+		Effective: eff,
+		Env:       instanceEnv(c.cfg.PublicURL, spec, eff, inst),
 		Templates: resolved,
 	})
 	if err != nil {
@@ -377,16 +395,16 @@ func (c *Controller) resolveTemplates(ctx context.Context, refs []model.Template
 }
 
 // instanceEnv builds the GRUS_* variables on top of the pool env. The token is added by the driver.
-func instanceEnv(publicURL string, spec model.PoolSpec, inst model.Instance) map[string]string {
-	env := make(map[string]string, len(spec.Env)+6)
-	for k, v := range spec.Env {
+func instanceEnv(publicURL string, spec model.PoolSpec, eff model.EffectiveSpec, inst model.Instance) map[string]string {
+	env := make(map[string]string, len(eff.Env)+6)
+	for k, v := range eff.Env {
 		env[k] = v
 	}
 	env["GRUS_URL"] = publicURL
 	env["GRUS_INSTANCE"] = inst.ID
 	env["GRUS_POOL"] = inst.Pool
 	env["GRUS_ROLE"] = string(inst.Role)
-	env["GRUS_PORT"] = fmt.Sprint(spec.Port)
+	env["GRUS_PORT"] = fmt.Sprint(eff.Port)
 	if spec.Scaling.Capacity > 0 {
 		env["GRUS_MAX_PLAYERS"] = fmt.Sprint(spec.Scaling.Capacity)
 	}

@@ -179,7 +179,11 @@ func mapNotFound(ref string, err error) error {
 // podFor builds the bare pod for one instance.
 func (d *Driver) podFor(spec driver.StartSpec) (*corev1.Pod, error) {
 	pool := spec.Pool.Spec.WithDefaults()
-	grace := time.Duration(pool.Lifecycle.GracePeriod)
+	eff := spec.EffectiveOrV1()
+	if eff.Port == 0 {
+		eff.Port = model.DefaultPort
+	}
+	grace := time.Duration(eff.GracePeriod)
 	graceSeconds := int64(grace / time.Second)
 	poolName := spec.Instance.Pool
 
@@ -190,14 +194,14 @@ func (d *Driver) podFor(spec driver.StartSpec) (*corev1.Pod, error) {
 
 	server := corev1.Container{
 		Name:            serverContainer,
-		Image:           pool.Image,
-		Command:         pool.Command,
-		Args:            pool.Args,
+		Image:           eff.Image,
+		Command:         eff.Command,
+		Args:            eff.Args,
 		WorkingDir:      dataMountPath,
 		Stdin:           true,
 		TTY:             false,
 		Env:             serverEnv(spec, pool),
-		Ports:           []corev1.ContainerPort{{Name: portName, ContainerPort: int32(pool.Port), Protocol: corev1.ProtocolTCP}},
+		Ports:           []corev1.ContainerPort{{Name: portName, ContainerPort: int32(eff.Port), Protocol: corev1.ProtocolTCP}},
 		Resources:       resources,
 		VolumeMounts:    []corev1.VolumeMount{dataMount()},
 		SecurityContext: containerSecurityContext(),
@@ -336,11 +340,11 @@ func serverResources(r model.Resources) (corev1.ResourceRequirements, error) {
 }
 
 func (d *Driver) labels(spec driver.StartSpec, poolName string, pool model.PoolSpec) map[string]string {
-	labels := make(map[string]string, len(d.cfg.PodLabels)+len(pool.Labels)+4)
+	labels := make(map[string]string, len(d.cfg.PodLabels)+len(spec.EffectiveOrV1().Labels)+4)
 	for k, v := range d.cfg.PodLabels {
 		labels[k] = v
 	}
-	for k, v := range pool.Labels {
+	for k, v := range spec.EffectiveOrV1().Labels {
 		labels[k] = v
 	}
 	// Driver labels win over user labels, so adoption by label keeps working.

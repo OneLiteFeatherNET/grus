@@ -30,8 +30,13 @@ func mapErr(err error) error {
 	return err
 }
 
-// PutPool validates and stores a pool. The spec is stored as sent; defaults apply when it is used.
+// PutPool validates and stores a pool owned by the api. The spec is stored as sent; defaults apply when it is used.
 func (c *Controller) PutPool(ctx context.Context, name string, spec model.PoolSpec) (model.Pool, error) {
+	return c.ApplyPool(ctx, model.SourceAPI, name, spec)
+}
+
+// ApplyPool is PutPool for a declaration owned by source; see Applier.
+func (c *Controller) ApplyPool(ctx context.Context, source model.Source, name string, spec model.PoolSpec) (model.Pool, error) {
 	var fields []model.FieldError
 	if !poolNameRE.MatchString(name) {
 		fields = append(fields, model.FieldError{Field: "name", Message: "must match ^[a-z0-9][a-z0-9-]{0,30}$"})
@@ -43,7 +48,12 @@ func (c *Controller) PutPool(ctx context.Context, name string, spec model.PoolSp
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	pool, _, err := c.st.PutPool(ctx, name, spec)
+	if cur, err := c.st.GetPool(ctx, name); err == nil {
+		if err := checkOwner(cur.Source, source, "pool", name); err != nil {
+			return model.Pool{}, err
+		}
+	}
+	pool, _, err := c.st.PutPoolAs(ctx, name, spec, source)
 	if err != nil {
 		return model.Pool{}, mapErr(err)
 	}
@@ -65,10 +75,19 @@ func (c *Controller) ListPools(ctx context.Context) ([]model.Pool, error) {
 // DeletePool removes the pool. With drain, Ready instances are drained instead of stopped; the reconcile
 // cycle stops every other instance of a pool that no longer exists.
 func (c *Controller) DeletePool(ctx context.Context, name string, drain bool) error {
+	return c.RemovePool(ctx, model.SourceAPI, name, drain)
+}
+
+// RemovePool is DeletePool on behalf of source; see Applier.
+func (c *Controller) RemovePool(ctx context.Context, source model.Source, name string, drain bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if _, err := c.st.GetPool(ctx, name); err != nil {
+	cur, err := c.st.GetPool(ctx, name)
+	if err != nil {
 		return mapErr(err)
+	}
+	if err := checkOwner(cur.Source, source, "pool", name); err != nil {
+		return err
 	}
 	if drain {
 		insts, err := c.st.ListInstances(ctx, store.InstanceFilter{Pool: name})
@@ -263,6 +282,9 @@ func (c *Controller) SelfStatus(ctx context.Context, id string, u StatusUpdate) 
 	}
 	if changed {
 		c.Trigger()
+	}
+	if inst.Role == model.RoleProxy {
+		c.publishNetwork(ctx)
 	}
 	return inst, nil
 }

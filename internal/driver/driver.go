@@ -31,6 +31,9 @@ const (
 type StartSpec struct {
 	Instance model.Instance
 	Pool     model.Pool
+	// Effective is the pool merged with its environment and groups. Zero for specs built by hand (tests);
+	// drivers use EffectiveOrV1 to read it.
+	Effective model.EffectiveSpec
 	// Token is the plain per-instance token, injected as GRUS_TOKEN. Never logged.
 	Token string
 	// Env are the GRUS_* variables (GRUS_URL, GRUS_INSTANCE, GRUS_POOL, GRUS_ROLE) plus spec env.
@@ -89,4 +92,25 @@ type Driver interface {
 	Logs(ctx context.Context, ref string, tail int, follow bool) (io.ReadCloser, error)
 	// Command writes one console line to the instance's stdin.
 	Command(ctx context.Context, ref string, line string) error
+}
+
+// EffectiveOrV1 returns Effective, or the v1 inline fields of the pool when no effective spec was resolved.
+func (s StartSpec) EffectiveOrV1() model.EffectiveSpec {
+	if s.Effective.Driver != "" {
+		return s.Effective
+	}
+	p := s.Pool.Spec
+	return model.EffectiveSpec{
+		Driver:      p.EffectiveDriver(),
+		Image:       p.Image,
+		Command:     p.Command,
+		Args:        p.Args,
+		Env:         p.Env,
+		Port:        p.Port,
+		Readiness:   model.ReadinessSelf,
+		StopCommand: p.Lifecycle.StopCommand,
+		GracePeriod: p.WithDefaults().Lifecycle.GracePeriod,
+		Templates:   p.Templates,
+		Labels:      p.Labels,
+	}
 }
