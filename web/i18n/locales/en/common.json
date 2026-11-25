@@ -1,15 +1,6 @@
 {
   "common": {
     "appName": "Grus",
-    "skipToContent": "Skip to content",
-    "menu": "Menu",
-    "navigation": "Navigation",
-    "close": "Close",
-    "language": "Switch language",
-    "lightTheme": "Light theme",
-    "darkTheme": "Dark theme",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
     "nav": {
       "overview": "Overview",
       "pools": "Pools",
@@ -23,11 +14,6 @@
       "open": "Live",
       "reconnecting": "Live: reconnecting",
       "closed": "Live: disconnected"
-    },
-    "problem": {
-      "network": "No connection to the Grus API",
-      "networkHint": "The interface cannot reach the server. It retries automatically.",
-      "unexpected": "Unexpected error"
     }
   }
 }

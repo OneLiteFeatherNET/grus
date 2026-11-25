@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   telemetry: false,
 
-  // Area components keep their own names (PoolTable, not PoolsPoolTable); m3/ keeps its M3 prefix.
+  // Area components keep their own names (PoolTable, not PoolsPoolTable); the M3 kit comes from Pavo.
   components: [
     { path: '~/components/pools', pathPrefix: false },
     { path: '~/components/templates', pathPrefix: false },
@@ -18,6 +18,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     '@nuxtjs/i18n',
+    '@onelitefeathernet/pavo',
   ],
 
   runtimeConfig: {
@@ -39,12 +40,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: [
-    '@fontsource/roboto/400.css',
-    '@fontsource/roboto/500.css',
-    '@fontsource/roboto/700.css',
-    '~/assets/css/main.css',
-  ],
+  css: ['~/assets/css/main.css'],
 
   vite: {
     plugins: [tailwindcss()],

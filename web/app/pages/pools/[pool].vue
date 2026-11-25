@@ -5,7 +5,7 @@
     </div>
 
     <template v-if="pool">
-      <PageHeader :title="pool.name" :subtitle="subtitle">
+      <M3PageHeader :title="pool.name" :subtitle="subtitle">
         <template #actions>
           <span class="text-label-medium text-on-surface-variant" data-test="live-status">
             {{ $t(`common.live.${status}`) }}
@@ -20,13 +20,13 @@
             {{ pool.maintenance ? $t('pools.maintenance.disable') : $t('pools.maintenance.enable') }}
           </M3Button>
         </template>
-      </PageHeader>
+      </M3PageHeader>
       <div v-if="pool.maintenance" class="-mt-4 mb-6">
         <M3Chip tone="warning" icon="mdi-wrench-outline" small>{{ $t('pools.badges.maintenance') }}</M3Chip>
       </div>
     </template>
 
-    <AppProblem :error="actionError ?? error" />
+    <M3Problem :error="actionError ?? error" />
 
     <M3EmptyState
       v-if="!pool && !pending && isNotFound"
@@ -56,18 +56,18 @@
       <PoolInstanceList :instances="instances" :now="now" />
     </section>
 
-    <ConfirmDialog
+    <M3ConfirmDialog
       v-model="saveOpen"
       :title="$t('pools.confirm.saveTitle', { pool: pool?.name ?? '' })"
       :message="$t('pools.confirm.saveMessage')"
-      :busy="saving"
+      :loading="saving"
       @confirm="saveScaling"
     />
-    <ConfirmDialog
+    <M3ConfirmDialog
       v-model="maintenanceOpen"
       :title="maintenanceTitle"
       :message="maintenanceMessage"
-      :busy="busyMaintenance"
+      :loading="busyMaintenance"
       @confirm="toggleMaintenance"
     />
   </div>

@@ -1,14 +1,14 @@
 <template>
   <div>
-    <PageHeader :title="$t('overview.title')" :subtitle="$t('overview.subtitle')">
+    <M3PageHeader :title="$t('overview.title')" :subtitle="$t('overview.subtitle')">
       <template #actions>
         <span class="text-label-medium text-on-surface-variant" data-test="live-status">
           {{ $t(`common.live.${status}`) }}
         </span>
       </template>
-    </PageHeader>
+    </M3PageHeader>
 
-    <AppProblem :error="error" />
+    <M3Problem :error="error" />
 
     <template v-if="pools?.length">
       <section class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4" :aria-label="$t('overview.totals.label')" data-test="totals">
