@@ -10,6 +10,10 @@ val mainClassName = "net.onelitefeather.grus.demo.DemoServer"
 dependencies {
     implementation(project(":grus-minestom"))
     implementation(libs.minestom)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 application {
