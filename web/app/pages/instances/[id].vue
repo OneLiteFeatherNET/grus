@@ -16,11 +16,12 @@
 
     <div v-if="instance" class="grid gap-4 lg:grid-cols-2">
       <M3Card variant="elevated" :title="$t('instances.detail.details')" class="lg:col-span-2">
-        <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-body-medium sm:grid-cols-2 xl:grid-cols-3">
-          <template v-for="row in fields" :key="row.label">
-            <dt class="text-on-surface-variant">{{ row.label }}</dt>
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-body-medium sm:grid-cols-2 xl:grid-cols-3">
+          <!-- One group per field, so label and value stay together in every column count. -->
+          <div v-for="row in fields" :key="row.label">
+            <dt class="text-label-medium text-on-surface-variant">{{ row.label }}</dt>
             <dd class="break-all" :class="row.mono ? 'font-mono text-body-small' : ''">{{ row.value }}</dd>
-          </template>
+          </div>
         </dl>
         <div class="mt-4 flex flex-wrap items-center gap-3">
           <StatusChip :state="instance.state" />

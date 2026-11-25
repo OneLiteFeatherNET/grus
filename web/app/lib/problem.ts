@@ -53,12 +53,18 @@ export function problemFromBody(status: number, statusText: string, body: unknow
 }
 
 /**
- * Normalises whatever a failed $fetch call threw. A thrown error with a response is an API answer; without one the
- * request never completed (network down, BFF unreachable).
+ * Normalises whatever a failed request threw. A thrown error with a response is an API answer; an error that already
+ * carries the transport data of {@link toTransportError} (for example restored from the SSR payload) is rebuilt from
+ * it; without either the request never completed (network down, BFF unreachable).
  */
-export function toClientError(err: unknown): Error {
+export function toClientError(err: unknown): ApiError | NetworkError {
   if (err instanceof ApiError || err instanceof NetworkError) return err
-  if (typeof err === 'object' && err !== null && 'response' in err) {
+  if (typeof err !== 'object' || err === null) return new NetworkError()
+  const data = (err as { data?: unknown }).data
+  if (isTransportData(data)) {
+    return 'problem' in data ? new ApiError(data.problem) : new NetworkError()
+  }
+  if ('response' in err) {
     const response = (err as { response?: { status?: unknown, statusText?: unknown, _data?: unknown } }).response
     if (response && typeof response.status === 'number') {
       return problemFromBody(
@@ -69,4 +75,34 @@ export function toClientError(err: unknown): Error {
     }
   }
   return new NetworkError()
+}
+
+/** What travels in the `data` of a Nuxt error so the client can rebuild the original ApiError or NetworkError. */
+export type TransportData = { problem: ProblemDetails } | { network: true }
+
+/** Input for Nuxt's createError: status and text for the error page, the original error as data. */
+export interface TransportError {
+  status: number
+  statusText: string
+  message: string
+  data: TransportData
+}
+
+/**
+ * Turns a client error into createError input. Nuxt masks every server-side error that was not raised with an HTTP
+ * status as "500 Internal Server Error" and drops its data, so API problems must travel this way to survive SSR.
+ */
+export function toTransportError(err: ApiError | NetworkError): TransportError {
+  if (err instanceof ApiError) {
+    return { status: err.status, statusText: err.problem.title, message: err.message, data: { problem: err.problem } }
+  }
+  return { status: 502, statusText: 'Bad Gateway', message: err.message, data: { network: true } }
+}
+
+function isTransportData(value: unknown): value is TransportData {
+  if (typeof value !== 'object' || value === null) return false
+  if ('network' in value) return (value as { network: unknown }).network === true
+  if (!('problem' in value)) return false
+  const problem = (value as { problem: unknown }).problem
+  return typeof problem === 'object' && problem !== null && typeof (problem as { status?: unknown }).status === 'number'
 }
