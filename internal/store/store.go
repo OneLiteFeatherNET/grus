@@ -27,10 +27,22 @@ type Store interface {
 	// (first insert = 1); maintenance and created_at are preserved. Returns the stored pool and
 	// whether the spec changed.
 	PutPool(ctx context.Context, name string, spec model.PoolSpec) (model.Pool, bool, error)
+	// PutPoolAs is PutPool for a declaration owned by source; the stored source is updated as well.
+	PutPoolAs(ctx context.Context, name string, spec model.PoolSpec, source model.Source) (model.Pool, bool, error)
 	GetPool(ctx context.Context, name string) (model.Pool, error)
 	ListPools(ctx context.Context) ([]model.Pool, error)
 	DeletePool(ctx context.Context, name string) error
 	SetMaintenance(ctx context.Context, name string, enabled bool) (model.Pool, error)
+
+	// PutEnvironment and PutGroup create or replace a declaration with the same generation rules as PutPool.
+	PutEnvironment(ctx context.Context, name string, spec model.EnvironmentSpec, source model.Source) (model.Environment, bool, error)
+	GetEnvironment(ctx context.Context, name string) (model.Environment, error)
+	ListEnvironments(ctx context.Context) ([]model.Environment, error)
+	DeleteEnvironment(ctx context.Context, name string) error
+	PutGroup(ctx context.Context, name string, spec model.GroupSpec, source model.Source) (model.Group, bool, error)
+	GetGroup(ctx context.Context, name string) (model.Group, error)
+	ListGroups(ctx context.Context) ([]model.Group, error)
+	DeleteGroup(ctx context.Context, name string) error
 
 	// CreateInstance inserts a new instance; ErrConflict if the id exists.
 	CreateInstance(ctx context.Context, inst model.Instance) error
