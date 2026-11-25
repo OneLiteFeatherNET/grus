@@ -37,6 +37,7 @@ func runHelperServer() {
 		signal.Ignore(syscall.SIGTERM)
 	}
 	fmt.Printf("started on %s\n", os.Getenv("GRUS_PORT"))
+	fmt.Printf("args %s\n", strings.Join(os.Args[1:], " "))
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
 		line := sc.Text()
@@ -437,4 +438,84 @@ func TestStartRunsTheEffectiveCommandInsteadOfThePoolCommand(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	h.waitPhase(ref, driver.PhaseRunning)
+}
+
+func TestChildDoesNotInheritTheParentEnvironment(t *testing.T) {
+	t.Setenv("GRUS_TEST_PARENT_SECRET", "s3cret")
+	t.Setenv("TZ", "UTC")
+	h := newHarness(t, nil)
+	ref, _ := h.d.Start(h.ctx, h.spec("inst-1", map[string]string{"FROM_SPEC": "yes"}))
+	h.waitPhase(ref, driver.PhaseRunning)
+	w := h.follow(ref)
+
+	for _, c := range []struct{ name, want string }{
+		{"GRUS_TEST_PARENT_SECRET", "env "},
+		{"TZ", "env UTC"},
+		{"FROM_SPEC", "env yes"},
+	} {
+		if err := h.d.Command(h.ctx, ref, "env "+c.name); err != nil {
+			t.Fatalf("Command: %v", err)
+		}
+		w.wait(c.want)
+	}
+}
+
+// freePort returns a TCP port nothing listens on right now.
+func freePort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatalf("find free port: %v", err)
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
+}
+
+func TestPortComesFromTheConfiguredRangeAndIsAdvertised(t *testing.T) {
+	port := freePort(t)
+	h := newHarness(t, nil)
+	h.d.cfg.PortMin, h.d.cfg.PortMax = port, port
+	h.d.cfg.AdvertiseAddress = "10.200.2.35"
+	spec := h.spec("inst-1", nil)
+	spec.Effective = model.EffectiveSpec{Driver: "process", Command: []string{os.Args[0]}, Args: []string{"--port={{port}}", "--dir=${GRUS_DIR}"}}
+
+	ref, err := h.d.Start(h.ctx, spec)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	o := h.waitPhase(ref, driver.PhaseRunning)
+	if want := fmt.Sprintf("10.200.2.35:%d", port); o.Address != want {
+		t.Errorf("Address = %q, want %q", o.Address, want)
+	}
+	w := h.follow(ref)
+	w.wait(fmt.Sprintf("args --port=%d --dir=%s", port, filepath.Join(h.base, "inst-1")))
+}
+
+func TestStartFailsWhenTheRangeIsExhausted(t *testing.T) {
+	port := freePort(t)
+	h := newHarness(t, nil)
+	h.d.cfg.PortMin, h.d.cfg.PortMax = port, port
+	ref, err := h.d.Start(h.ctx, h.spec("inst-1", nil))
+	if err != nil {
+		t.Fatalf("first Start: %v", err)
+	}
+	h.waitPhase(ref, driver.PhaseRunning)
+
+	if _, err := h.d.Start(h.ctx, h.spec("inst-2", nil)); err == nil {
+		t.Error("second Start with a one-port range returned nil error, want an error")
+	}
+}
+
+func TestJavaCommandUsesTheConfiguredBinary(t *testing.T) {
+	h := newHarness(t, nil)
+	h.d.cfg.JavaPath = os.Args[0]
+	spec := h.spec("inst-1", nil)
+	spec.Effective = model.EffectiveSpec{Driver: "process", Command: []string{"java", "-jar", "server.jar"}}
+
+	ref, err := h.d.Start(h.ctx, spec)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	h.waitPhase(ref, driver.PhaseRunning)
+	h.follow(ref).wait("args -jar server.jar")
 }

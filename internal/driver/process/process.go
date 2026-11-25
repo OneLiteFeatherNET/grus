@@ -47,6 +47,13 @@ type Config struct {
 	Logger *slog.Logger
 	// Clock stamps StartedAt. Nil means model.SystemClock.
 	Clock model.Clock
+	// PortMin and PortMax bound the ports handed to instances (inclusive). Both zero means a free
+	// loopback port chosen by the kernel, or the fixed port of a static pool.
+	PortMin, PortMax int
+	// AdvertiseAddress is the host part of the reported address. Empty means 127.0.0.1.
+	AdvertiseAddress string
+	// JavaPath replaces a command whose first element is "java". Empty keeps "java" from PATH.
+	JavaPath string
 }
 
 // Driver runs instances as local processes. It is safe for concurrent use.
@@ -65,6 +72,7 @@ var _ driver.Driver = (*Driver)(nil)
 // proc is one instance. All fields are guarded by Driver.mu except done, which is closed once after
 // Wait returned.
 type proc struct {
+	port    int // reserved port, released when the process is forgotten or failed to start
 	obs     driver.Observed
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
@@ -156,7 +164,7 @@ func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, erro
 		}
 	}
 
-	port, err := pickPort(spec)
+	port, err := d.reservePort(p, spec)
 	if err != nil {
 		return fail(err)
 	}
@@ -171,10 +179,14 @@ func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, erro
 		return fail(fmt.Errorf("create output pipe: %w", err))
 	}
 
-	args := append(slices.Clone(eff.Command[1:]), eff.Args...)
-	cmd := exec.Command(eff.Command[0], args...)
+	command := slices.Clone(eff.Command)
+	if command[0] == "java" && d.cfg.JavaPath != "" {
+		command[0] = d.cfg.JavaPath
+	}
+	args := expand(append(command[1:], eff.Args...), port, workdir)
+	cmd := exec.Command(command[0], args...)
 	cmd.Dir = workdir
-	cmd.Env = buildEnv(spec.Env, spec.Token, port)
+	cmd.Env = buildEnv(spec.Env, spec.Token, port, workdir)
 	cmd.Stdout = outW
 	cmd.Stderr = outW
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -197,7 +209,7 @@ func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, erro
 	d.mu.Lock()
 	p.cmd = cmd
 	p.stdin = stdin
-	p.obs.Address = net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	p.obs.Address = net.JoinHostPort(d.advertise(), strconv.Itoa(port))
 	p.obs.StartedAt = d.cfg.Clock.Now()
 	d.setPhaseLocked(p, driver.PhaseRunning, "")
 	d.mu.Unlock()
@@ -497,14 +509,82 @@ func joinLines(lines []string) string {
 	return b.String()
 }
 
-// buildEnv is the parent environment, then the spec env, then the GRUS_* values. Later entries win.
-func buildEnv(extra map[string]string, token string, port int) []string {
-	env := os.Environ()
+// inheritedEnv lists the only variables a child inherits from the process that runs the driver. Everything
+// else of the parent environment, secrets included, stays out.
+var inheritedEnv = []string{"PATH", "HOME", "LANG", "LC_ALL", "TZ", "JAVA_HOME", "TMPDIR"}
+
+// buildEnv is the allowlisted parent environment, then the spec env, then the GRUS_* values. Later entries win.
+func buildEnv(extra map[string]string, token string, port int, workdir string) []string {
+	var env []string
+	for _, k := range inheritedEnv {
+		if v, ok := os.LookupEnv(k); ok {
+			env = append(env, k+"="+v)
+		}
+	}
 	for _, k := range slices.Sorted(maps.Keys(extra)) {
 		env = append(env, k+"="+extra[k])
 	}
 	p := strconv.Itoa(port)
-	return append(env, "GRUS_TOKEN="+token, "GRUS_PORT="+p, "SERVER_PORT="+p)
+	return append(env, "GRUS_TOKEN="+token, "GRUS_PORT="+p, "SERVER_PORT="+p, "GRUS_DIR="+workdir)
+}
+
+// expand replaces {{port}} and ${GRUS_DIR} in every argument.
+func expand(args []string, port int, workdir string) []string {
+	r := strings.NewReplacer("{{port}}", strconv.Itoa(port), "${GRUS_DIR}", workdir)
+	out := make([]string, len(args))
+	for i, a := range args {
+		out[i] = r.Replace(a)
+	}
+	return out
+}
+
+func (d *Driver) advertise() string {
+	if d.cfg.AdvertiseAddress != "" {
+		return d.cfg.AdvertiseAddress
+	}
+	return "127.0.0.1"
+}
+
+// reservePort picks the port of a new instance and records it on p. With a configured range it is the
+// first port of the range that no live instance holds and that can be bound; otherwise the fixed port of
+// a static pool or a free loopback port.
+func (d *Driver) reservePort(p *proc, spec driver.StartSpec) (int, error) {
+	if d.cfg.PortMax > 0 {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		used := map[int]bool{}
+		for _, q := range d.procs {
+			if q != p && q.port > 0 && q.obs.Phase != driver.PhaseExited {
+				used[q.port] = true
+			}
+		}
+		for port := d.cfg.PortMin; port <= d.cfg.PortMax; port++ {
+			if used[port] || !bindable(port) {
+				continue
+			}
+			p.port = port
+			return port, nil
+		}
+		return 0, fmt.Errorf("process: no free port in %d-%d", d.cfg.PortMin, d.cfg.PortMax)
+	}
+	port, err := pickPort(spec)
+	if err != nil {
+		return 0, err
+	}
+	d.mu.Lock()
+	p.port = port
+	d.mu.Unlock()
+	return port, nil
+}
+
+// bindable reports whether nothing listens on the TCP port.
+func bindable(port int) bool {
+	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	if err != nil {
+		return false
+	}
+	_ = l.Close()
+	return true
 }
 
 // pickPort returns the fixed port of a static pool, or a free loopback port otherwise.
