@@ -60,6 +60,11 @@ type fakeService struct {
 	privateErr                error
 	privateCreated            bool
 	privateOwnerFilter        string
+
+	cells        []model.CellInfo
+	cellsErr     error
+	cellsPool    string
+	cellX, cellZ int
 }
 
 func newFakeService() *fakeService {
@@ -176,6 +181,19 @@ func (f *fakeService) ListPrivateServers(_ context.Context, owner string) ([]mod
 func (f *fakeService) StopPrivateServer(_ context.Context, id string) (model.Instance, error) {
 	f.stopID = id
 	return model.Instance{ID: id}, f.stopErr
+}
+
+func (f *fakeService) PoolCells(_ context.Context, pool string) ([]model.CellInfo, error) {
+	f.cellsPool = pool
+	return f.cells, f.cellsErr
+}
+
+func (f *fakeService) CellAt(_ context.Context, pool string, x, z int) (model.CellInfo, error) {
+	f.cellsPool, f.cellX, f.cellZ = pool, x, z
+	if f.cellsErr != nil || len(f.cells) == 0 {
+		return model.CellInfo{}, f.cellsErr
+	}
+	return f.cells[0], nil
 }
 
 func (f *fakeService) Command(context.Context, string, string) error { return nil }

@@ -5,8 +5,12 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 )
+
+// cellNameRE keeps cell names usable in the comma separated grus.olf/cells label.
+var cellNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)
 
 // Role says what an instance is for the network. Proxies register game instances.
 type Role string
@@ -136,10 +140,59 @@ type Placement struct {
 	Host   string `json:"host,omitempty"`
 }
 
-// Sharding splits a pool's world into cells (spec only; behaviour follows later).
+// Cell is one region of a sharded world. The bounds are chunk coordinates and inclusive.
+type Cell struct {
+	Name string `json:"name" doc:"Cell name; assigned to exactly one Ready instance"`
+	MinX int    `json:"minX" doc:"Smallest chunk x of the cell"`
+	MinZ int    `json:"minZ" doc:"Smallest chunk z of the cell"`
+	MaxX int    `json:"maxX" doc:"Largest chunk x of the cell"`
+	MaxZ int    `json:"maxZ" doc:"Largest chunk z of the cell"`
+}
+
+// Contains reports whether the chunk (x, z) lies inside the cell.
+func (c Cell) Contains(x, z int) bool {
+	return x >= c.MinX && x <= c.MaxX && z >= c.MinZ && z <= c.MaxZ
+}
+
+// CellBounds is the chunk rectangle of a cell as the cells API reports it.
+type CellBounds struct {
+	MinX int `json:"minX"`
+	MinZ int `json:"minZ"`
+	MaxX int `json:"maxX"`
+	MaxZ int `json:"maxZ"`
+}
+
+// Sharding splits a pool's world into cells, each served by one Ready instance of the pool. For the prototype the
+// cells are a static list. Later versions derive the cells from CellSize and split or merge them with the load
+// (spec only: a cell whose instance is above the target utilisation is cut in two along its longer edge and
+// the halves are assigned to different instances; neighbours of two idle instances are merged again).
 type Sharding struct {
-	CellSize int      `json:"cellSize,omitempty" doc:"Cell edge length in chunks"`
-	Cells    []string `json:"cells,omitempty" doc:"Explicit cell names"`
+	CellSize int    `json:"cellSize,omitempty" doc:"Cell edge length in chunks, used when cells are generated (default 32)"`
+	Cells    []Cell `json:"cells,omitempty" doc:"Static cell list; bounds are chunk coordinates"`
+}
+
+// ChunkOf returns the chunk coordinate of a block coordinate.
+func ChunkOf(block int) int { return block >> 4 }
+
+// CellInfo describes one cell with the instance that serves it. Instance and Address are empty while no
+// Ready instance owns the cell.
+type CellInfo struct {
+	Cell     string     `json:"cell"`
+	Bounds   CellBounds `json:"bounds"`
+	Instance string     `json:"instance,omitempty"`
+	Address  string     `json:"address,omitempty"`
+}
+
+// PoolCellsData is the payload of pool.cells: the whole assignment of a pool after a change.
+type PoolCellsData struct {
+	Pool  string      `json:"pool"`
+	Cells []CellOwner `json:"cells"`
+}
+
+// CellOwner maps a cell to its instance; Instance is empty when the cell is unassigned.
+type CellOwner struct {
+	Cell     string `json:"cell"`
+	Instance string `json:"instance,omitempty"`
 }
 
 // Private lets owners run their own instance of a pool. A pool with Private set is never autoscaled: its
@@ -187,6 +240,7 @@ const (
 	DefaultGracePeriod       = 30 * time.Second
 	DefaultHeartbeatTimeout  = 15 * time.Second
 	DefaultStartTimeout      = 5 * time.Minute
+	DefaultCellSize          = 32
 	DefaultQuotaPerOwner     = 1
 	DefaultPrivateIdle       = 10 * time.Minute
 )
@@ -195,6 +249,7 @@ const (
 const (
 	LabelPrefix = "grus.olf/"
 	LabelOwner  = LabelPrefix + "owner"
+	LabelCells  = LabelPrefix + "cells"
 )
 
 // WithDefaults returns a copy with every empty optional field set to its default.
@@ -222,6 +277,13 @@ func (s PoolSpec) WithDefaults() PoolSpec {
 	}
 	if s.Lifecycle.StartTimeout == 0 {
 		s.Lifecycle.StartTimeout = Duration(DefaultStartTimeout)
+	}
+	if s.Sharding != nil {
+		sh := *s.Sharding
+		if sh.CellSize == 0 {
+			sh.CellSize = DefaultCellSize
+		}
+		s.Sharding = &sh
 	}
 	if s.Private != nil {
 		p := *s.Private
@@ -292,6 +354,9 @@ func (s PoolSpec) Validate() []FieldError {
 	if s.Scaling.TargetUtilization <= 0 || s.Scaling.TargetUtilization > 1 {
 		add("scaling.targetUtilization", "must be in (0, 1]")
 	}
+	if sh := s.Sharding; sh != nil {
+		errs = append(errs, sh.validate()...)
+	}
 	if p := s.Private; p != nil {
 		if p.QuotaPerOwner < 0 {
 			add("private.quotaPerOwner", "must not be negative")
@@ -318,6 +383,39 @@ func (s PoolSpec) Validate() []FieldError {
 		}
 		if (t.Tag == "") == (t.Digest == "") {
 			add(fmt.Sprintf("templates[%d]", i), "needs exactly one of tag or digest")
+		}
+	}
+	return errs
+}
+
+func (sh Sharding) validate() []FieldError {
+	var errs []FieldError
+	add := func(f, m string) { errs = append(errs, FieldError{Field: f, Message: m}) }
+	if sh.CellSize < 0 {
+		add("sharding.cellSize", "must not be negative")
+	}
+	seen := map[string]bool{}
+	for i, c := range sh.Cells {
+		field := fmt.Sprintf("sharding.cells[%d]", i)
+		switch {
+		case c.Name == "":
+			add(field+".name", "is required")
+		case !cellNameRE.MatchString(c.Name):
+			add(field+".name", "must match "+cellNameRE.String())
+		case seen[c.Name]:
+			add(field+".name", "is used twice")
+		}
+		seen[c.Name] = true
+		if c.MaxX < c.MinX || c.MaxZ < c.MinZ {
+			add(field, "max must not be smaller than min")
+			continue
+		}
+		for j := 0; j < i; j++ {
+			o := sh.Cells[j]
+			if c.MinX <= o.MaxX && o.MinX <= c.MaxX && c.MinZ <= o.MaxZ && o.MinZ <= c.MaxZ {
+				add(field, "overlaps cell "+o.Name)
+				break
+			}
 		}
 	}
 	return errs
@@ -379,6 +477,7 @@ const (
 	EventNetworkPlayers  = "network.players"
 	EventPoolCondition   = "pool.condition"
 	EventPrivateIdleStop = "private.idle-stop"
+	EventPoolCells       = "pool.cells"
 	EventResync          = "resync"
 )
 

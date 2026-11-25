@@ -53,3 +53,45 @@ func TestPrivatePoolValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestShardingValidation(t *testing.T) {
+	spec := privatePool()
+	spec.Private = nil
+	spec.Sharding = &Sharding{Cells: []Cell{
+		{Name: "r0", MinX: 0, MinZ: 0, MaxX: 31, MaxZ: 31},
+		{Name: "r0", MinX: 40, MinZ: 0, MaxX: 50, MaxZ: 5},
+		{Name: "r2", MinX: 30, MinZ: 30, MaxX: 40, MaxZ: 40},
+		{Name: "bad,name", MinX: 100, MinZ: 0, MaxX: 90, MaxZ: 5},
+	}}
+
+	got := fieldsOf(spec.WithDefaults().Validate())
+
+	for _, f := range []string{"sharding.cells[1].name", "sharding.cells[2]", "sharding.cells[3].name"} {
+		if !got[f] {
+			t.Errorf("no error for %s in %v", f, got)
+		}
+	}
+}
+
+func TestShardingDefaultsAndValidSpec(t *testing.T) {
+	spec := privatePool()
+	spec.Private = nil
+	spec.Sharding = &Sharding{Cells: []Cell{{Name: "r0", MaxX: 31, MaxZ: 31}, {Name: "r1", MinX: 32, MaxX: 63, MaxZ: 31}}}
+
+	got := spec.WithDefaults()
+
+	if got.Sharding.CellSize != 32 || spec.Sharding.CellSize != 0 {
+		t.Errorf("cellSize = %d (input %d), want 32 without touching the input", got.Sharding.CellSize, spec.Sharding.CellSize)
+	}
+	if errs := got.Validate(); len(errs) != 0 {
+		t.Errorf("valid sharding rejected: %v", errs)
+	}
+}
+
+func TestChunkOfFloorsNegativeBlocks(t *testing.T) {
+	for block, want := range map[int]int{0: 0, 15: 0, 16: 1, -1: -1, -16: -1, -17: -2} {
+		if got := ChunkOf(block); got != want {
+			t.Errorf("ChunkOf(%d) = %d, want %d", block, got, want)
+		}
+	}
+}

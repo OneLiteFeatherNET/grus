@@ -76,7 +76,15 @@ spec:
                     cellSize: {type: integer}
                     cells:
                       type: array
-                      items: {type: string}
+                      items:
+                        type: object
+                        required: [name, minX, minZ, maxX, maxZ]
+                        properties:
+                          name: {type: string}
+                          minX: {type: integer}
+                          minZ: {type: integer}
+                          maxX: {type: integer}
+                          maxZ: {type: integer}
                 private:
                   type: object
                   properties:
