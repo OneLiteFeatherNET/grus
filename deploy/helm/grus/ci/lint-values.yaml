@@ -1,6 +1,6 @@
 # Values for `helm lint` and `helm template` in CI. Plain `helm lint` without values fails on purpose:
 # adminToken.existingSecret is required. This file names a placeholder Secret (never created here) and
-# one seed template, so the seed path renders as well.
+# one seed template, so the seed path renders as well, and enables the web UI.
 adminToken:
   existingSecret: grus-admin-lint
 templates:
@@ -9,3 +9,5 @@ templates:
       - path: server.properties
         content: |
           motd=Lobby
+web:
+  enabled: true

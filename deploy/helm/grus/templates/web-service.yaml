@@ -1,0 +1,17 @@
+{{- if .Values.web.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "grus.web.fullname" . }}
+  labels:
+    {{- include "grus.web.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ int .Values.web.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "grus.web.selectorLabels" . | nindent 4 }}
+{{- end }}

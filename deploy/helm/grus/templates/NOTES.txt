@@ -6,6 +6,13 @@ Instances reach the controller at:
 The HTTP API is inside the cluster on port {{ .Values.service.port }}:
   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "grus.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
 
+{{- if .Values.web.enabled }}
+
+The web UI {{ include "grus.web.fullname" . }} runs on port {{ .Values.web.service.port }}. Reach it with:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "grus.web.fullname" . }} 3000:{{ .Values.web.service.port }}
+and open http://localhost:3000. The UI has no login yet.
+{{- end }}
+
 {{- if not .Values.persistence.enabled }}
 
 WARNING: persistence is disabled. The database and file templates live in an emptyDir and are lost when the pod restarts.
