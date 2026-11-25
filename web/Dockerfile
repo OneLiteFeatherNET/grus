@@ -3,7 +3,7 @@
 #   docker build -f web/Dockerfile -t grus-web .
 # Runtime settings come from the environment (NUXT_GRUS_API_URL, NUXT_GRUS_TOKEN), nothing is baked in.
 
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 RUN corepack enable
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
