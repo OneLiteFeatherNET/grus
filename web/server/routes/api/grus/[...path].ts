@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import { buildClientResponseHeaders, buildUpstreamHeaders, buildUpstreamUrl } from '../../../utils/grus-proxy'
+import { buildClientResponseHeaders, buildUpstreamHeaders, buildUpstreamUrl, isAllowedOrigin } from '../../../utils/grus-proxy'
 
 // BFF: every /api/grus/<path> request is forwarded to <grusApiUrl>/<path> with the server-side admin token.
 // Responses are passed through as a stream, so SSE (/v1/events, live logs) reaches the browser unbuffered.
@@ -15,6 +15,10 @@ export default defineEventHandler(async (event) => {
   }
   catch {
     return problem(event, 404, 'Not Found', 'This path is not part of the Grus API.')
+  }
+  const requestHeaders = getRequestHeaders(event) as Record<string, string | undefined>
+  if (!isAllowedOrigin(event.method, requestHeaders, getRequestHost(event))) {
+    return problem(event, 403, 'Forbidden', 'Cross-site requests may not change Grus.')
   }
   if (!config.grusToken) {
     return problem(event, 503, 'Service Unavailable', 'The Grus token is not configured on the web server (NUXT_GRUS_TOKEN).')
@@ -32,7 +36,7 @@ export default defineEventHandler(async (event) => {
   try {
     upstream = await fetch(target, {
       method: event.method,
-      headers: buildUpstreamHeaders(getRequestHeaders(event) as Record<string, string | undefined>, config.grusToken),
+      headers: buildUpstreamHeaders(requestHeaders, config.grusToken),
       body: body ? new Uint8Array(body) : undefined,
       redirect: 'manual',
       signal: controller.signal,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildClientResponseHeaders, buildUpstreamHeaders, buildUpstreamUrl } from './grus-proxy'
+import { buildClientResponseHeaders, buildUpstreamHeaders, buildUpstreamUrl, isAllowedOrigin } from './grus-proxy'
 
 describe('buildUpstreamUrl', () => {
   it('joins the API base, the /v1 path and the query string', () => {
@@ -91,5 +91,36 @@ describe('buildClientResponseHeaders', () => {
   it('leaves ordinary responses without the streaming headers', () => {
     const headers = buildClientResponseHeaders(new Headers({ 'content-type': 'application/json' }))
     expect(headers.has('x-accel-buffering')).toBe(false)
+  })
+})
+
+describe('isAllowedOrigin', () => {
+  it('allows safe methods from any site', () => {
+    expect(isAllowedOrigin('GET', { 'sec-fetch-site': 'cross-site' }, 'localhost:3000')).toBe(true)
+  })
+
+  it('allows a mutating request from the same origin', () => {
+    expect(isAllowedOrigin('POST', { 'sec-fetch-site': 'same-origin' }, 'localhost:3000')).toBe(true)
+  })
+
+  it('rejects a mutating request from another site', () => {
+    expect(isAllowedOrigin('POST', { 'sec-fetch-site': 'cross-site' }, 'localhost:3000')).toBe(false)
+  })
+
+  it('rejects a mutating request from a sibling subdomain', () => {
+    expect(isAllowedOrigin('PUT', { 'sec-fetch-site': 'same-site' }, 'localhost:3000')).toBe(false)
+  })
+
+  it('falls back to the Origin header when Sec-Fetch-Site is missing', () => {
+    expect(isAllowedOrigin('DELETE', { origin: 'http://localhost:3000' }, 'localhost:3000')).toBe(true)
+    expect(isAllowedOrigin('DELETE', { origin: 'https://evil.example' }, 'localhost:3000')).toBe(false)
+  })
+
+  it('rejects a malformed Origin header', () => {
+    expect(isAllowedOrigin('POST', { origin: 'null' }, 'localhost:3000')).toBe(false)
+  })
+
+  it('allows non-browser clients that send neither header', () => {
+    expect(isAllowedOrigin('POST', {}, 'localhost:3000')).toBe(true)
   })
 })

@@ -79,3 +79,25 @@ function safeDecode(value: string): string | null {
     return null
   }
 }
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+/**
+ * Cross-site request guard for mutating requests. The BFF attaches the admin token to every request, so without
+ * this check any web page open in the same browser could stop instances through a form POST while a port-forward
+ * is active. Browsers send Sec-Fetch-Site and Origin; requests without both (curl, scripts) cannot be forged by a
+ * web page and are allowed.
+ */
+export function isAllowedOrigin(method: string, headers: Record<string, string | undefined>, host: string | undefined): boolean {
+  if (SAFE_METHODS.has(method.toUpperCase())) return true
+  const fetchSite = headers['sec-fetch-site']
+  if (fetchSite !== undefined) return fetchSite === 'same-origin'
+  const origin = headers.origin
+  if (origin === undefined) return true
+  try {
+    return host !== undefined && new URL(origin).host === host
+  }
+  catch {
+    return false
+  }
+}
