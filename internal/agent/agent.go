@@ -380,7 +380,11 @@ func (a *Agent) pollLoop(ctx context.Context) {
 }
 
 func (a *Agent) reportLoop(ctx context.Context) {
-	ticker := time.NewTicker(reportInterval)
+	every := a.cfg.ReportInterval
+	if every <= 0 {
+		every = reportInterval
+	}
+	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 	failing := false
 	for {
@@ -482,4 +486,6 @@ type Config struct {
 	CAFile     string
 	StopOnExit bool
 	Version    string
+	// ReportInterval is how often the agent reports without a change; zero means 5s.
+	ReportInterval time.Duration
 }
