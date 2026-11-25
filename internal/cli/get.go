@@ -42,8 +42,9 @@ var kinds = []kind{
 		{"PORT", field("spec", "port")}, {"READINESS", field("spec", "readiness")},
 	}},
 	{name: "hosts", aliases: []string{"host"}, newNames: true, cols: []column{
-		{"NAME", field("name")}, {"VERSION", field("version")}, {"MEMORY-MIB", field("capacity", "memoryMiB")},
-		{"ADDRESSES", field("addresses")}, {"LAST-SEEN", field("lastSeen")},
+		{"NAME", field("name")}, {"VERSION", field("version")}, {"ADDRESS", field("address")},
+		{"PORTS", field("portRange")}, {"ONLINE", field("online")}, {"INSTANCES", field("instances")},
+		{"LAST-SEEN", field("lastSeen")},
 	}},
 }
 
