@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { ApiError, NetworkError } from '~/lib/problem'
+import { ApiError, NetworkError, toClientError } from '~/lib/problem'
 
 /**
  * Shows an error from the API. RFC 9457 problems show their title, detail and field errors; a network failure gets
@@ -19,14 +19,16 @@ import { ApiError, NetworkError } from '~/lib/problem'
 const props = defineProps<{ error?: Error | null }>()
 const { t } = useI18n()
 
-const apiError = computed(() => (props.error instanceof ApiError ? props.error : null))
+// Errors from useAsyncData arrive wrapped as Nuxt errors (and from the SSR payload as plain data), so rebuild first.
+const normalized = computed(() => (props.error ? toClientError(props.error) : null))
+const apiError = computed(() => (normalized.value instanceof ApiError ? normalized.value : null))
 const title = computed(() => {
-  if (props.error instanceof NetworkError) return t('common.problem.network')
+  if (normalized.value instanceof NetworkError) return t('common.problem.network')
   if (apiError.value) return `${apiError.value.status} ${apiError.value.problem.title}`
   return t('common.problem.unexpected')
 })
 const detail = computed(() => {
-  if (props.error instanceof NetworkError) return t('common.problem.networkHint')
+  if (normalized.value instanceof NetworkError) return t('common.problem.networkHint')
   if (apiError.value) return apiError.value.problem.detail ?? ''
   return props.error?.message ?? ''
 })

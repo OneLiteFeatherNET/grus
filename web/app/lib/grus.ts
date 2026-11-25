@@ -1,5 +1,5 @@
 import type { components } from '~/types/grus-api'
-import { toClientError } from './problem'
+import { toClientError, toTransportError } from './problem'
 
 export type Pool = components['schemas']['Pool']
 export type PoolSpec = components['schemas']['PoolSpec']
@@ -46,7 +46,8 @@ export function bffUrl(path: string, query?: Record<string, string | undefined>)
 }
 
 /**
- * Browser requester: $fetch against the BFF; every failure is normalised to ApiError or NetworkError.
+ * Browser requester: $fetch against the BFF. Failures are thrown as Nuxt errors whose data carries the ApiError or
+ * NetworkError; `toClientError` rebuilds the original from them.
  * Area clients in app/lib/api/ build on it the same way createGrusClient does.
  */
 export const browserRequest: Requester = async (url, options) => {
@@ -54,7 +55,8 @@ export const browserRequest: Requester = async (url, options) => {
     return await $fetch(url, { method: options.method, body: options.body as BodyInit | undefined })
   }
   catch (err) {
-    throw toClientError(err)
+    // Raised through createError so Nuxt keeps status and problem on the server render instead of masking them.
+    throw createError(toTransportError(toClientError(err)))
   }
 }
 

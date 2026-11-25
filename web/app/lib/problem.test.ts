@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ApiError, NetworkError, problemFromBody, toClientError } from './problem'
+import { ApiError, NetworkError, problemFromBody, toClientError, toTransportError } from './problem'
 
 describe('problemFromBody', () => {
   it('keeps the RFC 9457 fields of a problem document', () => {
@@ -52,5 +52,42 @@ describe('toClientError', () => {
   it('passes known client errors through unchanged', () => {
     const known = new NetworkError('gone')
     expect(toClientError(known)).toBe(known)
+  })
+})
+
+describe('toTransportError', () => {
+  it('carries status, title and problem of an ApiError', () => {
+    const problem = { type: 'about:blank', title: 'Conflict', status: 409, detail: 'Pool is busy' }
+    expect(toTransportError(new ApiError(problem))).toEqual({
+      status: 409,
+      statusText: 'Conflict',
+      message: 'Pool is busy',
+      data: { problem },
+    })
+  })
+
+  it('marks a NetworkError as a bad gateway with network data', () => {
+    const transported = toTransportError(new NetworkError())
+    expect(transported.status).toBe(502)
+    expect(transported.data).toEqual({ network: true })
+  })
+})
+
+describe('toClientError with transported data', () => {
+  it('rebuilds the ApiError from the data of a wrapped error', () => {
+    const problem = { type: 'about:blank', title: 'Not Found', status: 404, detail: 'No pool lobby' }
+    const wrapped = Object.assign(new Error('wrapped'), { data: { problem } })
+    const err = toClientError(wrapped)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).problem.detail).toBe('No pool lobby')
+  })
+
+  it('rebuilds a NetworkError from network data', () => {
+    expect(toClientError({ data: { network: true } })).toBeInstanceOf(NetworkError)
+  })
+
+  it('ignores data that is not a transported problem', () => {
+    const thrown = { data: { problem: 'text' }, response: { status: 500, statusText: 'Server Error', _data: {} } }
+    expect((toClientError(thrown) as ApiError).status).toBe(500)
   })
 })
