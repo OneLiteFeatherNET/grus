@@ -603,3 +603,69 @@ func startedIDs(specs []driver.StartSpec) []string {
 	}
 	return ids
 }
+
+// routerFixture runs the controller over a router with a reachable host and an agent host that cannot be
+// listed yet.
+func routerFixture(t *testing.T) (f *fixture, up, agent *fake.Driver) {
+	t.Helper()
+	f = newFixture(t, Config{})
+	up, agent = fake.New("host-up"), fake.New("agent-host")
+	agent.ListErr = errors.New("agent offline")
+	rtr := router.New(func(driver.StartSpec) (string, error) { return "host-up", nil })
+	for _, d := range []driver.Driver{up, agent} {
+		if err := rtr.Add(d); err != nil {
+			t.Fatalf("add host %s: %v", d.Host(), err)
+		}
+	}
+	f.c = New(f.c.cfg, f.st, rtr, nil, f.pub)
+	return f, up, agent
+}
+
+func TestAdoptToleratesAnOfflineHostAndAdoptsTheOthers(t *testing.T) {
+	f, up, _ := routerFixture(t)
+	up.Add(driver.Observed{InstanceID: "lobby-a", Pool: "lobby", Role: model.RoleGame, Phase: driver.PhaseRunning})
+
+	if err := f.c.Adopt(f.ctx); err != nil {
+		t.Fatalf("Adopt with an offline host: %v", err)
+	}
+	if !f.c.Ready() {
+		t.Error("Ready() = false: an offline agent host must not block readiness")
+	}
+	got := f.get("lobby-a")
+	if got.Host != "host-up" || got.State != model.StateReady {
+		t.Errorf("adopted instance host = %q, state = %s, want host-up and Ready", got.Host, got.State)
+	}
+}
+
+func TestInstancesOfAHostThatReconnectsLaterAreAdoptedByReconcile(t *testing.T) {
+	f, _, agent := routerFixture(t)
+	f.putPool("stub", dynamicSpec(0, 0))
+	if err := f.c.Adopt(f.ctx); err != nil {
+		t.Fatalf("Adopt: %v", err)
+	}
+	agent.Add(driver.Observed{InstanceID: "stub-1", Pool: "stub", Role: model.RoleGame, Phase: driver.PhaseRunning,
+		Address: "10.200.2.35:30001", TokenHash: "h"})
+
+	f.reconcile() // still offline: nothing to adopt, no failure
+	if _, err := f.st.GetInstance(f.ctx, "stub-1"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("instance of an offline host stored early: %v", err)
+	}
+
+	agent.ListErr = nil
+	f.reconcile()
+	got := f.get("stub-1")
+	if got.Host != "agent-host" || got.DriverRef != "agent-host/stub-1" || got.State != model.StateReady || got.TokenHash != "h" {
+		t.Errorf("adopted instance = host %q ref %q state %s hash %q", got.Host, got.DriverRef, got.State, got.TokenHash)
+	}
+}
+
+func TestStartedInstanceRecordsTheRealHostNotTheRouter(t *testing.T) {
+	f, up, _ := routerFixture(t)
+	f.putPool("lobby", dynamicSpec(1, 0))
+	f.reconcile()
+
+	id := up.Started()[0].Instance.ID
+	if got := f.get(id).Host; got != "host-up" {
+		t.Errorf("instance host = %q, want host-up", got)
+	}
+}

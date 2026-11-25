@@ -58,6 +58,9 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 	}
 
 	var errs []error
+	if err := c.adoptLater(ctx, observed, unlisted); err != nil {
+		errs = append(errs, err)
+	}
 	insts, err := c.listAll(ctx)
 	if err != nil {
 		return err
