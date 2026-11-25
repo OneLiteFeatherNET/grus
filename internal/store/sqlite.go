@@ -94,6 +94,11 @@ type rowScanner interface {
 // an unchanged spec keeps generation and updated_at, a changed spec increments the generation.
 // Maintenance and created_at are never changed by PutPool.
 func (s *SQLite) PutPool(ctx context.Context, name string, spec model.PoolSpec) (model.Pool, bool, error) {
+	return s.PutPoolAs(ctx, name, spec, model.SourceAPI)
+}
+
+// PutPoolAs is PutPool for a declaration owned by source. A changed source alone does not bump the generation.
+func (s *SQLite) PutPoolAs(ctx context.Context, name string, spec model.PoolSpec, source model.Source) (model.Pool, bool, error) {
 	canon, err := canonicalJSON(spec)
 	if err != nil {
 		return model.Pool{}, false, fmt.Errorf("encode spec of pool %q: %w", name, err)
@@ -109,8 +114,8 @@ func (s *SQLite) PutPool(ctx context.Context, name string, spec model.PoolSpec) 
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO pools (name, spec, generation, maintenance, created_at, updated_at) VALUES (?, ?, 1, 0, ?, ?)`,
-			name, canon, formatTime(now), formatTime(now))
+			`INSERT INTO pools (name, spec, source, generation, maintenance, created_at, updated_at) VALUES (?, ?, ?, 1, 0, ?, ?)`,
+			name, canon, string(source), formatTime(now), formatTime(now))
 		if err != nil {
 			return model.Pool{}, false, fmt.Errorf("insert pool %q: %w", name, err)
 		}
@@ -118,14 +123,20 @@ func (s *SQLite) PutPool(ctx context.Context, name string, spec model.PoolSpec) 
 	case err != nil:
 		return model.Pool{}, false, fmt.Errorf("load pool %q: %w", name, err)
 	case storedSpec == canon:
+		if cur.Source != source {
+			if _, err := tx.ExecContext(ctx, `UPDATE pools SET source = ? WHERE name = ?`, string(source), name); err != nil {
+				return model.Pool{}, false, fmt.Errorf("update source of pool %q: %w", name, err)
+			}
+			cur.Source = source
+		}
 		if err := tx.Commit(); err != nil {
 			return model.Pool{}, false, fmt.Errorf("commit pool %q: %w", name, err)
 		}
 		return cur, false, nil
 	default:
 		_, err = tx.ExecContext(ctx,
-			`UPDATE pools SET spec = ?, generation = generation + 1, updated_at = ? WHERE name = ?`,
-			canon, formatTime(now), name)
+			`UPDATE pools SET spec = ?, source = ?, generation = generation + 1, updated_at = ? WHERE name = ?`,
+			canon, string(source), formatTime(now), name)
 		if err != nil {
 			return model.Pool{}, false, fmt.Errorf("update spec of pool %q: %w", name, err)
 		}
@@ -136,11 +147,12 @@ func (s *SQLite) PutPool(ctx context.Context, name string, spec model.PoolSpec) 
 		return model.Pool{}, false, fmt.Errorf("commit pool %q: %w", name, err)
 	}
 	cur.Spec = spec
+	cur.Source = source
 	cur.UpdatedAt = now
 	return cur, true, nil
 }
 
-const poolSelect = `SELECT name, spec, generation, maintenance, created_at, updated_at FROM pools`
+const poolSelect = `SELECT name, spec, source, generation, maintenance, created_at, updated_at FROM pools`
 
 // GetPool returns the pool; ErrNotFound if it does not exist.
 func (s *SQLite) GetPool(ctx context.Context, name string) (model.Pool, error) {
@@ -329,15 +341,16 @@ func (s *SQLite) SetMeta(ctx context.Context, key, value string) error {
 // scanPool reads one pool row and also returns the stored spec text, which PutPool compares against.
 func scanPool(sc rowScanner) (model.Pool, string, error) {
 	var p model.Pool
-	var specText, createdAt, updatedAt string
+	var specText, source, createdAt, updatedAt string
 	var maintenance int64
-	if err := sc.Scan(&p.Name, &specText, &p.Generation, &maintenance, &createdAt, &updatedAt); err != nil {
+	if err := sc.Scan(&p.Name, &specText, &source, &p.Generation, &maintenance, &createdAt, &updatedAt); err != nil {
 		return model.Pool{}, "", err
 	}
 	if err := json.Unmarshal([]byte(specText), &p.Spec); err != nil {
 		return model.Pool{}, "", fmt.Errorf("decode spec of pool %q: %w", p.Name, err)
 	}
 	var err error
+	p.Source = model.Source(source)
 	p.Maintenance = maintenance != 0
 	if p.CreatedAt, err = parseTime(createdAt); err != nil {
 		return model.Pool{}, "", fmt.Errorf("pool %q created_at: %w", p.Name, err)
