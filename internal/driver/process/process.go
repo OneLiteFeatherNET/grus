@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/OneLiteFeatherNET/grus/internal/driver"
@@ -106,6 +105,9 @@ func (d *Driver) Host() string { return d.cfg.HostID }
 // returned ref is the instance id. Starting an id that is still running is an error.
 func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, error) {
 	id := spec.Instance.ID
+	if err := checkSupported(); err != nil {
+		return "", err
+	}
 	if err := checkID(id); err != nil {
 		return "", err
 	}
@@ -189,7 +191,7 @@ func (d *Driver) Start(ctx context.Context, spec driver.StartSpec) (string, erro
 	cmd.Env = buildEnv(spec.Env, spec.Token, port, workdir)
 	cmd.Stdout = outW
 	cmd.Stderr = outW
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	prepareCmd(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		outR.Close()
@@ -267,7 +269,7 @@ func (d *Driver) Kill(ctx context.Context, ref string) error {
 	if !started {
 		return fmt.Errorf("process: instance %q is not started yet", ref)
 	}
-	d.signal(ref, p, syscall.SIGKILL)
+	d.signal(ref, p, true)
 	select {
 	case <-p.done:
 		return nil
@@ -392,7 +394,7 @@ func (d *Driver) escalate(ref string, p *proc, grace time.Duration) {
 	case <-d.after(grace):
 	}
 	d.cfg.Logger.Info("grace period over, sending SIGTERM", "instance", ref)
-	d.signal(ref, p, syscall.SIGTERM)
+	d.signal(ref, p, false)
 
 	select {
 	case <-p.done:
@@ -400,11 +402,11 @@ func (d *Driver) escalate(ref string, p *proc, grace time.Duration) {
 	case <-d.after(d.termWait):
 	}
 	d.cfg.Logger.Warn("process ignored SIGTERM, sending SIGKILL", "instance", ref)
-	d.signal(ref, p, syscall.SIGKILL)
+	d.signal(ref, p, true)
 }
 
 // signal sends sig to the process group unless the process has already been reaped.
-func (d *Driver) signal(ref string, p *proc, sig syscall.Signal) {
+func (d *Driver) signal(ref string, p *proc, kill bool) {
 	d.mu.Lock()
 	exited := p.obs.Phase == driver.PhaseExited
 	pid := p.cmd.Process.Pid
@@ -412,8 +414,8 @@ func (d *Driver) signal(ref string, p *proc, sig syscall.Signal) {
 	if exited {
 		return
 	}
-	if err := syscall.Kill(-pid, sig); err != nil && !errors.Is(err, syscall.ESRCH) {
-		d.cfg.Logger.Warn("signal failed", "instance", ref, "signal", sig.String(), "err", err)
+	if err := signalGroup(pid, kill); err != nil {
+		d.cfg.Logger.Warn("signal failed", "instance", ref, "kill", kill, "err", err)
 	}
 }
 
@@ -628,8 +630,8 @@ func exitReason(cmd *exec.Cmd, err error) string {
 		}
 		return "exited"
 	}
-	if ws, ok := st.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
-		return "signal: " + ws.Signal().String()
+	if r, ok := signaledReason(st); ok {
+		return r
 	}
 	return fmt.Sprintf("exit code %d", st.ExitCode())
 }
