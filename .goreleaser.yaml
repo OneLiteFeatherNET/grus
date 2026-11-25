@@ -129,12 +129,14 @@ homebrew_casks:
     homepage: https://github.com/OneLiteFeatherNET/grus
     description: Grus game server orchestration command line client
 
-scoops:
-  - ids: [grus]
-    skip_upload: true
-    repository:
-      owner: OneLiteFeatherNET
-      name: scoop-bucket
-    homepage: https://github.com/OneLiteFeatherNET/grus
-    description: Grus game server orchestration command line client
-    license: Apache-2.0
+# Scoop needs a windows archive of grus, which does not exist yet (see the ignore rule above).
+# Enable this block together with the windows build; upload stays off until the bucket exists.
+# scoops:
+#   - ids: [grus]
+#     skip_upload: true
+#     repository:
+#       owner: OneLiteFeatherNET
+#       name: scoop-bucket
+#     homepage: https://github.com/OneLiteFeatherNET/grus
+#     description: Grus game server orchestration command line client
+#     license: Apache-2.0
