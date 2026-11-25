@@ -3,6 +3,8 @@
     :columns="columns"
     :items="pools"
     row-key="name"
+    :paginate="false"
+    :row-attrs="() => ({ 'data-test': 'pool-row' })"
     data-test="pool-table"
   >
     <template #item.name="{ item }">

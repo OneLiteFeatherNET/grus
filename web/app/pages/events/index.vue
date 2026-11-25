@@ -57,6 +57,8 @@
       :columns="columns"
       :items="rows"
       row-key="id"
+      :paginate="false"
+      :row-attrs="() => ({ 'data-test': 'event-row' })"
       data-test="events-table"
     >
       <template #item.time="{ item }">

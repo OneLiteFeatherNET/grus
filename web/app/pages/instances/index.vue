@@ -32,9 +32,16 @@
       :columns="columns"
       :items="visible"
       row-key="id"
+      :sort-by="query.sort"
+      :sort-desc="query.dir === 'desc'"
+      server-sort
+      :paginate="false"
+      :row-attrs="() => ({ 'data-test': 'instance-row' })"
       data-test="instance-table"
+      @update:sort-by="onSortBy"
+      @update:sort-desc="onSortDesc"
     >
-      <template #item.id="{ item }">
+      <template #item.name="{ item }">
         <NuxtLink :to="`/instances/${encodeURIComponent(item.id)}`" class="font-mono text-primary underline-offset-2 hover:underline">
           {{ item.id }}
         </NuxtLink>
@@ -60,6 +67,7 @@
 import { instancesApi } from '~/lib/api/instances'
 import type { Instance } from '~/lib/grus'
 import { applyInstanceEvent, filterInstances, formatAge, sortInstances } from '~/lib/instances/list'
+import type { SortKey } from '~/lib/instances/list'
 import { parseInstanceQuery, toInstanceRouteQuery } from '~/lib/instances/query'
 import type { InstanceListQuery } from '~/lib/instances/query'
 import { INSTANCE_STATES } from '~/lib/states'
@@ -88,14 +96,14 @@ const stateItems = computed(() => [
   ...INSTANCE_STATES.map(state => ({ value: state, title: t(`instances.states.${state}`) })),
 ])
 
-// Only the name column is sortable in the table. The sort query parameters are not applied to it.
+// Name and age sort through the URL (sort, dir); the page sorts the rows itself, so the table keeps their order.
 const columns = computed(() => [
-  { key: 'id', title: t('instances.columns.name') },
+  { key: 'name', title: t('instances.columns.name') },
   { key: 'pool', title: t('instances.columns.pool'), sortable: false },
   { key: 'state', title: t('instances.columns.state'), sortable: false },
   { key: 'address', title: t('instances.columns.address'), sortable: false },
   { key: 'players', title: t('instances.columns.players'), sortable: false },
-  { key: 'age', title: t('instances.columns.age'), sortable: false },
+  { key: 'age', title: t('instances.columns.age') },
 ])
 
 // "now" is only known in the browser; SSR renders no ages to avoid a hydration mismatch.
@@ -128,5 +136,17 @@ onResync(() => void refresh())
 
 function update(patch: Partial<InstanceListQuery>) {
   void router.replace({ query: toInstanceRouteQuery({ ...query.value, ...patch }) })
+}
+
+// The table emits the column key and then the direction on every header click. The table cycles through
+// "unsorted" as well; this page never shows that state, so an empty key keeps the current column (ascending).
+let requestedSort: string | undefined
+function onSortBy(key: string) {
+  requestedSort = key
+}
+function onSortDesc(desc: boolean) {
+  const sort = requestedSort || query.value.sort
+  requestedSort = undefined
+  update({ sort: sort as SortKey, dir: desc ? 'desc' : 'asc' })
 }
 </script>

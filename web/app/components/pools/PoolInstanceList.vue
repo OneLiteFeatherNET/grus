@@ -8,6 +8,8 @@
       :columns="columns"
       :items="instances"
       row-key="id"
+      :paginate="false"
+      :row-attrs="() => ({ 'data-test': 'pool-instance-row' })"
       data-test="pool-instance-table"
     >
       <template #item.id="{ item }">
