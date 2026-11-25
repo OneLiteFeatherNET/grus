@@ -52,6 +52,29 @@ class GameServersTest {
     }
 
     @Test
+    void newlyRegisteredServerIsPingedOnce() {
+        FakeProxyRegistry proxy = new FakeProxyRegistry();
+        GameServers servers = new GameServers(proxy);
+
+        servers.applyStateChange(change("lobby-1", "Starting", "Ready", ADDRESS));
+        servers.applyStateChange(change("lobby-1", "Ready", "Ready", ADDRESS));
+
+        assertEquals(List.of("lobby-1"), proxy.pings(),
+                "the backend must be pinged once after registration, not on every update");
+    }
+
+    @Test
+    void serverThatIsNotRegisteredIsNotPinged() {
+        FakeProxyRegistry proxy = new FakeProxyRegistry()
+                .withStaticServer("lobby-1", new HostPort("127.0.0.1", 30000));
+        GameServers servers = new GameServers(proxy);
+
+        servers.applyStateChange(change("lobby-1", "Starting", "Ready", ADDRESS));
+
+        assertEquals(List.of(), proxy.pings(), "a server that was not registered by Grus must not be pinged");
+    }
+
+    @Test
     void drainingStateUnregistersOwnedServer() {
         FakeProxyRegistry proxy = new FakeProxyRegistry();
         GameServers servers = new GameServers(proxy);

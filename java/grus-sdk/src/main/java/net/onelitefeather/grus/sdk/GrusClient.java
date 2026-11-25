@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Blocking client for the Grus REST API ({@code /v1}). Thread-safe.
@@ -101,6 +102,22 @@ public final class GrusClient {
         body.put("maxPlayers", maxPlayers);
         body.put("labels", labels == null ? Map.of() : labels);
         return read(send("PUT", "/v1/self/status", Map.of(), toJson(body)), Instance.class);
+    }
+
+    /**
+     * Network-wide player count ({@code GET /v1/network}).
+     *
+     * @return the count, or empty when the controller answers 404 because it predates the endpoint
+     */
+    public Optional<NetworkStatus> network() {
+        try {
+            return Optional.of(read(send("GET", "/v1/network", Map.of(), null), NetworkStatus.class));
+        } catch (GrusException e) {
+            if (e.status() == 404) {
+                return Optional.empty();
+            }
+            throw e;
+        }
     }
 
     /** Marks this instance as allocated to a player group ({@code POST /v1/self/allocate}). */

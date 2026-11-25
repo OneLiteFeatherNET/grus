@@ -10,6 +10,7 @@ final class FakeProxyRegistry implements ProxyRegistry {
 
     private final Map<String, HostPort> servers = new HashMap<>();
     private final List<String> calls = new ArrayList<>();
+    private final List<String> pings = new ArrayList<>();
 
     /** A server that exists before Grus touches the list, like one from velocity.toml. */
     FakeProxyRegistry withStaticServer(String name, HostPort address) {
@@ -32,6 +33,15 @@ final class FakeProxyRegistry implements ProxyRegistry {
     public void unregisterServer(String name) {
         servers.remove(name);
         calls.add("unregister " + name);
+    }
+
+    @Override
+    public void pingOnce(String name) {
+        pings.add(name);
+    }
+
+    List<String> pings() {
+        return List.copyOf(pings);
     }
 
     List<String> calls() {

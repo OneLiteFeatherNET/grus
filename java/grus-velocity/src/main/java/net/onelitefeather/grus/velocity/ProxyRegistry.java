@@ -9,4 +9,7 @@ public interface ProxyRegistry {
     void registerServer(String name, HostPort address);
 
     void unregisterServer(String name);
+
+    /** Pings a registered server once in the background and logs the result. Never throws. */
+    void pingOnce(String name);
 }
