@@ -26,7 +26,7 @@ func mapError(log *slog.Logger, err error) huma.StatusError {
 		return huma.Error422UnprocessableEntity(ve.Error(), details...)
 	case errors.Is(err, controller.ErrNotFound), errors.Is(err, store.ErrNotFound), errors.Is(err, templates.ErrNotFound):
 		return huma.Error404NotFound("not found")
-	case errors.Is(err, controller.ErrHasPlayers), errors.Is(err, controller.ErrInvalidState), errors.Is(err, controller.ErrLimit), errors.Is(err, controller.ErrManagedElsewhere):
+	case errors.Is(err, controller.ErrHasPlayers), errors.Is(err, controller.ErrInvalidState), errors.Is(err, controller.ErrLimit), errors.Is(err, controller.ErrQuota), errors.Is(err, controller.ErrManagedElsewhere):
 		return huma.Error409Conflict(err.Error())
 	default:
 		log.Error("api: request failed", "err", err)

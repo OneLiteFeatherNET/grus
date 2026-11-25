@@ -60,6 +60,23 @@ With `GRUS_URL` and `GRUS_TOKEN` set, the stub posts `/v1/self/ready` once the l
 controller accepts it), sends `PUT /v1/self/status` every 5 seconds, and on SIGTERM posts `/v1/self/shutdown`
 best effort before exiting.
 
+## Private servers
+
+A pool with a `private` section (`quotaPerOwner`, default 1; `idleTimeout`, default 10m) is not autoscaled:
+`scaling.min` and `scaling.buffer` must be 0 and instances are created on demand.
+
+```sh
+grus private create home --owner <player-uuid>   # starts the server, or shows the one that already runs
+grus private list --owner <player-uuid>
+```
+
+`POST /v1/private-servers` returns the owner's live instance in the pool (200) or starts one (201); an owner
+at the quota gets 409. `DELETE /v1/private-servers/{id}` drains the server. An instance without players for
+`idleTimeout` is stopped and the `private.idle-stop` event is published.
+
+World persistence is spec only for now: a later version snapshots the instance directory to a template on
+stop and restores it on the next start.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

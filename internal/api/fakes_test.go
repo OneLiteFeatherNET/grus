@@ -55,6 +55,11 @@ type fakeService struct {
 	logsFollow bool
 	logsBody   string
 	logsErr    error
+
+	privatePool, privateOwner string
+	privateErr                error
+	privateCreated            bool
+	privateOwnerFilter        string
 }
 
 func newFakeService() *fakeService {
@@ -153,6 +158,24 @@ func (f *fakeService) Logs(_ context.Context, _ string, tail int, follow bool) (
 		return nil, f.logsErr
 	}
 	return io.NopCloser(strings.NewReader(f.logsBody)), nil
+}
+
+func (f *fakeService) CreatePrivateServer(_ context.Context, pool, owner string) (model.Instance, bool, error) {
+	f.privatePool, f.privateOwner = pool, owner
+	if f.privateErr != nil {
+		return model.Instance{}, false, f.privateErr
+	}
+	return model.Instance{ID: pool + "-x", Pool: pool, Labels: map[string]string{model.LabelOwner: owner}}, f.privateCreated, nil
+}
+
+func (f *fakeService) ListPrivateServers(_ context.Context, owner string) ([]model.Instance, error) {
+	f.privateOwnerFilter = owner
+	return nil, nil
+}
+
+func (f *fakeService) StopPrivateServer(_ context.Context, id string) (model.Instance, error) {
+	f.stopID = id
+	return model.Instance{ID: id}, f.stopErr
 }
 
 func (f *fakeService) Command(context.Context, string, string) error { return nil }

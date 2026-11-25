@@ -45,6 +45,16 @@ var activeStates = map[model.State]bool{
 func Decide(v PoolView, now time.Time) Decision {
 	spec := v.Spec
 	static := spec.Mode == model.ModeStatic
+	if spec.Private != nil {
+		// Private pools are created on demand and stopped by the idle rule of the reconciler.
+		n := 0
+		for _, inst := range v.Instances {
+			if activeStates[inst.State] {
+				n++
+			}
+		}
+		return Decision{Desired: n, Current: n, Inputs: map[string]int{"active": n}}
+	}
 
 	var (
 		active  int

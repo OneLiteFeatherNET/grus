@@ -102,6 +102,7 @@ func build(mux *http.ServeMux, s *server, version string) huma.API {
 	s.registerPools(api)
 	s.registerDeclarations(api)
 	s.registerInstances(api)
+	s.registerPrivateServers(api)
 	s.registerSelf(api)
 	s.registerTemplates(api)
 	s.registerAgents(api)
