@@ -1,0 +1,9 @@
+{
+  "role": "game",
+  "mode": "dynamic",
+  "placement": { "driver": "agent", "host": "mc01" },
+  "command": ["./grus-stub-server"],
+  "templates": [{ "name": "stub-native", "tag": "stable" }],
+  "resources": { "memoryMiB": 64 },
+  "scaling": { "min": 1, "max": 2, "buffer": 0, "capacity": 20 }
+}

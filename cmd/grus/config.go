@@ -37,6 +37,7 @@ type config struct {
 	DebugEndpoints       bool
 	HostID               string
 	AdminToken           string
+	AgentTokens          map[string]string // host -> hex SHA-256 of the agent token
 	ProcessDir           string
 	ReconcileInterval    time.Duration
 	CRDs                 bool
@@ -106,6 +107,9 @@ func loadConfig(args []string, getenv func(string) string) (config, error) {
 	cfg.ImagePullSecrets = splitList(*pullSecrets)
 
 	var err error
+	if cfg.AgentTokens, err = parseAgentTokens(getenv("GRUS_AGENT_TOKENS")); err != nil {
+		return config{}, err
+	}
 	if cfg.NodeSelector, err = parseKeyValues("GRUS_NODE_SELECTOR", *nodeSelector); err != nil {
 		return config{}, err
 	}

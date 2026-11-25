@@ -1,0 +1,9 @@
+{
+  "role": "game",
+  "mode": "dynamic",
+  "environment": "minestom-jar",
+  "placement": { "driver": "agent", "host": "mc01" },
+  "templates": [{ "name": "minestom-lobby", "tag": "stable" }],
+  "resources": { "memoryMiB": 1024 },
+  "scaling": { "min": 1, "max": 2, "buffer": 1, "capacity": 50 }
+}

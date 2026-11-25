@@ -24,6 +24,10 @@ type Config struct {
 	DebugEndpoints bool   // registers the admin-only debug routes
 	Ready          func() bool
 	Version        string
+	// AgentTokens maps an agent host to the hex SHA-256 of its token. Empty disables agent tokens.
+	AgentTokens map[string]string
+	// Agents serves the /v1/agents and /v1/hosts routes. Nil answers them with 404.
+	Agents Agents
 }
 
 const (
@@ -79,7 +83,7 @@ func newServer(cfg Config, svc controller.Service, tpl templates.Store, events h
 		tpl:    tpl,
 		events: events,
 		log:    logger,
-		auth:   newAuthenticator(cfg.AdminToken, svc, logger),
+		auth:   newAuthenticator(cfg.AdminToken, cfg.AgentTokens, svc, logger),
 	}
 }
 
@@ -100,6 +104,7 @@ func build(mux *http.ServeMux, s *server, version string) huma.API {
 	s.registerInstances(api)
 	s.registerSelf(api)
 	s.registerTemplates(api)
+	s.registerAgents(api)
 	if s.cfg.DebugEndpoints {
 		s.registerDebug(api)
 	}

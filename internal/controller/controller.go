@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -59,6 +60,7 @@ type Controller struct {
 	lastPublished map[string]time.Time  // per instance: last instance.updated from SelfStatus
 	resolveWarned map[string]string     // per pool: last unresolvable reason already reported
 	lastNetwork   model.NetworkStatus   // last network.players payload
+	adoptHosts    map[string]bool       // hosts whose unknown instances are adopted once they can be listed
 }
 
 // New builds a controller. Call Adopt (or Run, which adopts first) before reconciling.
@@ -90,6 +92,7 @@ func New(cfg Config, st store.Store, drv driver.Driver, tpl templates.Store, pub
 		belowSince:    make(map[string]*time.Time),
 		lastPublished: make(map[string]time.Time),
 		resolveWarned: make(map[string]string),
+		adoptHosts:    make(map[string]bool),
 	}
 }
 
@@ -126,15 +129,43 @@ func (c *Controller) Trigger() {
 func (c *Controller) Ready() bool { return c.ready.Load() }
 
 // Adopt creates store records for driver instances that have none, so a restart takes over running
-// instances instead of stopping them. Nothing is stopped here.
+// instances instead of stopping them. Nothing is stopped here. Hosts that cannot be listed yet (agents that
+// have not reconnected) do not block readiness: their instances are adopted by the reconcile loop as soon
+// as the host can be listed.
 func (c *Controller) Adopt(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	observed, err := c.drv.List(ctx)
 	if err != nil {
-		return fmt.Errorf("list driver instances: %w", err)
+		var partial unlistedHostsError
+		if !errors.As(err, &partial) {
+			return fmt.Errorf("list driver instances: %w", err)
+		}
+		for _, host := range partial.FailedHosts() {
+			c.adoptHosts[host] = true
+		}
+		c.log.Warn("some hosts cannot be listed yet, adopting their instances later", "hosts", partial.FailedHosts())
 	}
+	adopted, err := c.adoptObserved(ctx, observed)
+	if err != nil {
+		return err
+	}
+	c.ready.Store(true)
+	c.log.Info("adopted instances", "count", adopted)
+	return nil
+}
+
+// MarkAdoptHost makes the reconcile loop adopt the unknown instances of host once it can be listed. It is
+// meant for hosts that appear at runtime, such as an agent that registers for the first time.
+func (c *Controller) MarkAdoptHost(host string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.adoptHosts[host] = true
+}
+
+// adoptObserved creates records for the observed instances that have none and returns how many it created.
+func (c *Controller) adoptObserved(ctx context.Context, observed []driver.Observed) (int, error) {
 	now := c.clock.Now()
 	adopted := 0
 	for _, o := range observed {
@@ -146,7 +177,7 @@ func (c *Controller) Adopt(ctx context.Context) error {
 			continue
 		}
 		if !errors.Is(err, store.ErrNotFound) {
-			return fmt.Errorf("load instance %s: %w", o.InstanceID, err)
+			return adopted, fmt.Errorf("load instance %s: %w", o.InstanceID, err)
 		}
 		created := o.StartedAt
 		if created.IsZero() {
@@ -157,7 +188,7 @@ func (c *Controller) Adopt(ctx context.Context) error {
 			Pool:           o.Pool,
 			Role:           o.Role,
 			PoolGeneration: o.PoolGeneration,
-			Host:           c.drv.Host(),
+			Host:           hostOfRef(o.Ref, c.drv.Host()),
 			DriverRef:      o.Ref,
 			Address:        o.Address,
 			StateSince:     now,
@@ -178,14 +209,50 @@ func (c *Controller) Adopt(ctx context.Context) error {
 			}
 		}
 		if err := c.st.CreateInstance(ctx, inst); err != nil {
-			return fmt.Errorf("adopt instance %s: %w", inst.ID, err)
+			return adopted, fmt.Errorf("adopt instance %s: %w", inst.ID, err)
 		}
 		c.pub.Publish(model.EventInstanceCreated, inst)
 		adopted++
 	}
-	c.ready.Store(true)
-	c.log.Info("adopted instances", "count", adopted)
+	return adopted, nil
+}
+
+// adoptLater adopts the unknown instances of the marked hosts that can be listed now.
+func (c *Controller) adoptLater(ctx context.Context, observed []driver.Observed, unlisted map[string]bool) error {
+	var due []driver.Observed
+	ready := map[string]bool{}
+	for host := range c.adoptHosts {
+		if !unlisted[host] {
+			ready[host] = true
+		}
+	}
+	if len(ready) == 0 {
+		return nil
+	}
+	for _, o := range observed {
+		if ready[hostOfRef(o.Ref, "")] {
+			due = append(due, o)
+		}
+	}
+	n, err := c.adoptObserved(ctx, due)
+	if err != nil {
+		return err
+	}
+	for host := range ready {
+		delete(c.adoptHosts, host)
+	}
+	if n > 0 {
+		c.log.Info("adopted instances of reconnected hosts", "count", n)
+	}
 	return nil
+}
+
+// hostOfRef returns the host part of a router ref "<host>/<ref>", or fallback for plain refs.
+func hostOfRef(ref, fallback string) string {
+	if host, _, ok := strings.Cut(ref, "/"); ok {
+		return host
+	}
+	return fallback
 }
 
 // apply runs one lifecycle input. When the state changes it persists the instance and publishes
@@ -318,6 +385,7 @@ func (c *Controller) createInstance(ctx context.Context, pool model.Pool) (model
 		return c.apply(ctx, inst, state.InFailed, "start: "+err.Error())
 	}
 	inst.DriverRef = ref
+	inst.Host = hostOfRef(ref, inst.Host)
 	return c.apply(ctx, inst, state.InPreparing, "")
 }
 

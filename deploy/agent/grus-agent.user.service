@@ -1,0 +1,15 @@
+# User unit for hosts without root, e.g. ~/.config/systemd/user/grus-agent.service
+# (run `loginctl enable-linger $USER` once so it survives logouts).
+[Unit]
+Description=Grus agent
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/grus-agent/agent.env
+WorkingDirectory=%h/grus-agent
+ExecStart=%h/grus-agent/bin/grus-agent
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
