@@ -69,6 +69,11 @@ func newStack(ctx context.Context, cfg config, logger *slog.Logger) (*stack, err
 		_ = st.Close()
 		return nil, err
 	}
+	drv, agents, err := withAgents(drv, cfg)
+	if err != nil {
+		_ = st.Close()
+		return nil, err
+	}
 	hub := events.NewHub(strconv.FormatInt(time.Now().UnixMilli(), 10), eventRingSize, model.SystemClock{}, logger)
 	ctrl := controller.New(controller.Config{
 		PublicURL:    cfg.PublicURL,
@@ -76,11 +81,14 @@ func newStack(ctx context.Context, cfg config, logger *slog.Logger) (*stack, err
 		Interval:     cfg.ReconcileInterval,
 		Logger:       logger,
 	}, st, drv, tpl, hub)
+	agents.OnNewHost(ctrl.MarkAdoptHost)
 	handler := api.New(api.Config{
 		AdminToken:     cfg.AdminToken,
 		DebugEndpoints: cfg.DebugEndpoints,
 		Ready:          ctrl.Ready,
 		Version:        version,
+		AgentTokens:    cfg.AgentTokens,
+		Agents:         agents,
 	}, ctrl, tpl, hub.Handler(sseHeartbeat), logger)
 	return &stack{store: st, tpl: tpl, drv: drv, hub: hub, ctrl: ctrl, handler: handler}, nil
 }
