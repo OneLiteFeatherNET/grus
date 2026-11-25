@@ -115,7 +115,7 @@ nfpms:
 
 # Package manager publishing stays off until the tap and bucket repositories exist. Remove
 # skip_upload (and give the workflow a token that can push to them) when they do.
-brews:
+homebrew_casks:
   - name: grus
     ids: [grus]
     skip_upload: true
@@ -124,7 +124,6 @@ brews:
       name: homebrew-tap
     homepage: https://github.com/OneLiteFeatherNET/grus
     description: Grus game server orchestration command line client
-    license: Apache-2.0
 
 scoops:
   - ids: [grus]
