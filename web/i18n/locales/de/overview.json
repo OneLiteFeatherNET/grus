@@ -8,6 +8,19 @@
     "instances": "Instanzen",
     "serving": "{serving} von {total} aktiv",
     "maintenance": "Wartung",
-    "empty": "Noch keine Pools angelegt"
+    "empty": "Noch keine Pools angelegt",
+    "totals": {
+      "label": "Gesamtwerte",
+      "pools": "Pools",
+      "ready": "Instanzen bereit",
+      "maintenance": "In Wartung",
+      "players": "Spieler online"
+    },
+    "players": "Spieler",
+    "feed": {
+      "title": "Aktivität",
+      "empty": "Noch keine Ereignisse",
+      "all": "Alle Ereignisse"
+    }
   }
 }

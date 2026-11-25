@@ -8,6 +8,19 @@
     "instances": "Instances",
     "serving": "{serving} of {total} serving",
     "maintenance": "Maintenance",
-    "empty": "No pools yet"
+    "empty": "No pools yet",
+    "totals": {
+      "label": "Totals",
+      "pools": "Pools",
+      "ready": "Instances ready",
+      "maintenance": "In maintenance",
+      "players": "Players online"
+    },
+    "players": "Players",
+    "feed": {
+      "title": "Activity",
+      "empty": "No events yet",
+      "all": "All events"
+    }
   }
 }
