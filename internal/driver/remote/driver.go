@@ -79,6 +79,7 @@ func New(cfg Config) *Driver {
 		cfg:      cfg,
 		info:     HostInfo{Name: cfg.Host},
 		revision: cfg.Clock.Now().UnixMilli(),
+		cmdSeq:   cfg.Clock.Now().UnixMilli(), // later than any sequence of a previous controller run
 		changed:  make(chan struct{}),
 		desired:  make(map[string]*entry),
 		observed: make(map[string]ObservedInstance),

@@ -50,7 +50,7 @@ type DesiredInstance struct {
 	TokenHash  string              `json:"tokenHash,omitempty"`
 	Effective  model.EffectiveSpec `json:"effective"`
 	Env        map[string]string   `json:"env,omitempty" doc:"Environment of the instance as the controller built it; the agent overrides GRUS_URL"`
-	Templates  []TemplateVersion       `json:"templates,omitempty"`
+	Templates  []TemplateVersion   `json:"templates,omitempty"`
 	MemoryMiB  int                 `json:"memoryMiB,omitempty"`
 	Stop       StopRequest         `json:"stop"`
 	Kill       bool                `json:"kill,omitempty" doc:"Kill the instance and forget it"`

@@ -288,6 +288,17 @@ func (d *Driver) List(_ context.Context) ([]driver.Observed, error) {
 	return out, nil
 }
 
+// Pid returns the process id of a started instance.
+func (d *Driver) Pid(ref string) (int, bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	p, ok := d.procs[ref]
+	if !ok || p.cmd == nil || p.cmd.Process == nil {
+		return 0, false
+	}
+	return p.cmd.Process.Pid, true
+}
+
 // Forget drops an exited instance from List. Running instances cannot be forgotten.
 func (d *Driver) Forget(ref string) error {
 	d.mu.Lock()
