@@ -39,6 +39,9 @@ jobs:
       - name: Build the commands
         run: go build ./cmd/...
 
+      - name: Build the cli for windows
+        run: GOOS=windows GOARCH=amd64 go build ./cmd/grus ./cmd/grus-stub-server
+
       - name: Keep the Kubernetes client out of the agent
         run: |
           if go list -deps ./cmd/grus-agent | grep -q '^k8s.io/'; then
