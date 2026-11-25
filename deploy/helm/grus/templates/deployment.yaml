@@ -136,6 +136,8 @@ spec:
               value: {{ int .Values.controller.maxInstances | quote }}
             - name: GRUS_DEBUG_ENDPOINTS
               value: {{ ternary "true" "false" .Values.controller.debugEndpoints | quote }}
+            - name: GRUS_CRDS
+              value: {{ ternary "true" "false" .Values.crds.watch | quote }}
             - name: GRUS_HOST_ID
               value: {{ printf "k8s-%s" .Release.Namespace | quote }}
             - name: GRUS_ADMIN_TOKEN

@@ -22,3 +22,12 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create"]
+  {{- if .Values.crds.watch }}
+  # Custom resources of this namespace only: the controller reads them and reports the status of pools.
+  - apiGroups: ["grus.onelitefeather.net"]
+    resources: ["environments", "groups", "pools"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["grus.onelitefeather.net"]
+    resources: ["environments/status", "groups/status", "pools/status"]
+    verbs: ["get", "update", "patch"]
+  {{- end }}
