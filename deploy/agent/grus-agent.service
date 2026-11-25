@@ -1,0 +1,26 @@
+# System unit for a dedicated user. Install as /etc/systemd/system/grus-agent.service.
+# For a host without root, use the user unit variant at the bottom of deploy/agent/README.md.
+[Unit]
+Description=Grus agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=grus
+Group=grus
+WorkingDirectory=/var/lib/grus-agent
+EnvironmentFile=/etc/grus-agent/agent.env
+ExecStart=/usr/local/bin/grus-agent
+Restart=always
+RestartSec=5
+# Instances are children of the agent. The default KillMode (control-group) ends them when the unit stops,
+# which is what you want for a restart: the agent cannot re-attach to them and starts them again from the
+# controller's desired state. Use KillMode=process only together with GRUS_AGENT_STOP_ON_EXIT=false and
+# accept that leftover instance processes are killed on the next start.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/grus-agent
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

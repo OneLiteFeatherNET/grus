@@ -1,0 +1,6 @@
+{
+  "kind": "jvm",
+  "jvm": { "jar": "server.jar", "flags": ["-XX:+UseG1GC"] },
+  "readiness": "self",
+  "stopCommand": "stop"
+}
