@@ -145,6 +145,13 @@ spec:
                 secretKeyRef:
                   name: {{ required "adminToken.existingSecret is required: name an existing Secret that holds the admin token" .Values.adminToken.existingSecret }}
                   key: {{ .Values.adminToken.key | quote }}
+            {{- if .Values.agents.tokens.existingSecret }}
+            - name: GRUS_AGENT_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.agents.tokens.existingSecret | quote }}
+                  key: {{ .Values.agents.tokens.key | quote }}
+            {{- end }}
             {{- range $name, $value := .Values.controller.extraEnv }}
             - name: {{ $name }}
               value: {{ $value | quote }}
