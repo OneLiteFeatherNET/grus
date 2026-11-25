@@ -27,7 +27,8 @@ let retryTimer: ReturnType<typeof setTimeout> | undefined
 export function useGrusEvents() {
   const feed = useState<FeedState>('grus.events', () => ({ status: 'idle', recent: [] }))
 
-  if (import.meta.client) connect(feed)
+  // Opened after hydration: connecting during setup would change the status text before the server HTML is hydrated.
+  if (import.meta.client) onNuxtReady(() => connect(feed))
 
   function subscribe(register: () => () => void): () => void {
     const off = register()
