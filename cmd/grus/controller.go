@@ -141,6 +141,7 @@ func runController(args []string) error {
 		ctrlErr = s.ctrl.Run(ctrlCtx)
 		close(ctrlExited)
 	}()
+	startCRDSync(ctrlCtx, cfg, s, logger)
 	logger.Info("controller started", "listen", cfg.Listen, "driver", s.drv.Name(), "host", s.drv.Host())
 
 	var runErr error
