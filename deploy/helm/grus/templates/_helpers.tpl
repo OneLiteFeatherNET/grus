@@ -98,3 +98,32 @@ securityContext:
     drop:
       - ALL
 {{- end }}
+
+{{/*
+Web UI (optional). Its name label differs from the controller's, so the controller Service (which selects on
+name and instance) never routes traffic to the web pods.
+*/}}
+{{- define "grus.web.fullname" -}}
+{{- printf "%s-web" (include "grus.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "grus.web.selectorLabels" -}}
+app.kubernetes.io/name: {{ printf "%s-web" (include "grus.name" .) | trunc 63 | trimSuffix "-" }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: web
+{{- end }}
+
+{{- define "grus.web.labels" -}}
+helm.sh/chart: {{ include "grus.chart" . }}
+{{ include "grus.web.selectorLabels" . }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: grus
+{{- end }}
+
+{{/*
+Web UI image: the repository from web.image, the tag from web.image.tag or, when empty, the chart's appVersion.
+*/}}
+{{- define "grus.web.image" -}}
+{{- printf "%s:%s" .Values.web.image.repository (default .Chart.AppVersion .Values.web.image.tag) -}}
+{{- end }}

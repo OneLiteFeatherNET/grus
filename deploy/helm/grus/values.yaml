@@ -88,6 +88,32 @@ proxyService:
   port: 25565
   pool: proxy
 
+# Optional web UI (Nuxt, in web/) that talks to the controller over its HTTP API. It is a separate Deployment
+# and ClusterIP Service with a single replica. Off by default; the UI has no login yet, so reach it with
+# kubectl port-forward (see NOTES.txt) and do not expose the Service.
+web:
+  enabled: false
+  image:
+    repository: harbor.onelitefeather.dev/onelitefeather/grus-web
+    # Empty means the chart's appVersion, like the controller image.
+    tag: ""
+    pullPolicy: IfNotPresent
+  # Names of existing image pull Secrets for the web pod. Empty falls back to imagePullSecrets.
+  imagePullSecrets: []
+  # Requests equal limits, so the web pod gets a fixed share and is never throttled below it.
+  # A Nitro node-server measured 63 to 115 MiB in Apus, so 128Mi would leave no headroom.
+  resources:
+    requests:
+      memory: 192Mi
+      cpu: 100m
+    limits:
+      memory: 192Mi
+      cpu: 100m
+  service:
+    port: 3000
+  # Additional web environment variables, name: value.
+  extraEnv: {}
+
 # Seed templates copied into the file template store when the pod starts. Each key is a template name;
 # its value is a list of files, each with a relative path inside the template and its content.
 # Example:
