@@ -23,6 +23,15 @@ adminToken:
   # Key inside that Secret.
   key: GRUS_ADMIN_TOKEN
 
+agents:
+  tokens:
+    # Optional. Existing Secret with the agent token hashes (GRUS_AGENT_TOKENS). The value has the form
+    # host=<sha256 hex of the agent token>[,host2=...]. Only hashes belong in the Secret, never the plain
+    # tokens; see deploy/agent/README.md. Empty means no agent host can authenticate.
+    existingSecret: ""
+    # Key inside that Secret.
+    key: GRUS_AGENT_TOKENS
+
 controller:
   # Base URL that instances use to reach the controller. Empty means the in-cluster Service URL
   # http://<fullname>.<namespace>.svc.cluster.local:<service.port>.
