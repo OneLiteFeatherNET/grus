@@ -21,6 +21,10 @@ builds:
       - -s -w -X main.version={{ .Version }}
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
+    # The controller half of the binary pulls in the process driver, which uses unix process groups
+    # and does not compile for windows yet. Drop this block once the driver builds there.
+    ignore:
+      - goos: windows
 
   # The agent runs game servers as local processes on a host; it has no windows build.
   - id: grus-agent
