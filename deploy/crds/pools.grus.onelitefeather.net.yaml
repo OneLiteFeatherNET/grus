@@ -1,0 +1,170 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: pools.grus.onelitefeather.net
+spec:
+  group: grus.onelitefeather.net
+  scope: Namespaced
+  names:
+    kind: Pool
+    listKind: PoolList
+    plural: pools
+    singular: pool
+    shortNames: [gpool]
+    categories: [grus]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Environment
+          type: string
+          jsonPath: .spec.environment
+        - name: Placement
+          type: string
+          jsonPath: .spec.placement.driver
+        - name: Min
+          type: integer
+          jsonPath: .spec.scaling.min
+        - name: Max
+          type: integer
+          jsonPath: .spec.scaling.max
+        - name: Ready
+          type: integer
+          jsonPath: .status.readyReplicas
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          description: A set of interchangeable (dynamic) or fixed (static) instances of one service.
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [role, mode, resources, scaling]
+              properties:
+                role:
+                  type: string
+                  enum: [proxy, game, other]
+                mode:
+                  type: string
+                  enum: [dynamic, static]
+                driver:
+                  type: string
+                  description: v1 spelling of placement.driver.
+                placement:
+                  type: object
+                  properties:
+                    driver:
+                      type: string
+                      enum: [kubernetes, agent, process]
+                    host:
+                      type: string
+                      description: Agent host name, required for the agent driver.
+                environment:
+                  type: string
+                groups:
+                  type: array
+                  items: {type: string}
+                sharding:
+                  type: object
+                  properties:
+                    cellSize: {type: integer}
+                    cells:
+                      type: array
+                      items: {type: string}
+                private:
+                  type: object
+                  properties:
+                    quotaPerOwner: {type: integer}
+                    idleTimeout:
+                      type: string
+                      description: Go duration such as 10m.
+                image:
+                  type: string
+                command:
+                  type: array
+                  items: {type: string}
+                args:
+                  type: array
+                  items: {type: string}
+                env:
+                  type: object
+                  additionalProperties: {type: string}
+                secretEnv:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, secret, key]
+                    properties:
+                      name: {type: string}
+                      secret: {type: string}
+                      key: {type: string}
+                resources:
+                  type: object
+                  required: [memoryMiB]
+                  properties:
+                    memoryMiB: {type: integer}
+                    cpu: {type: string}
+                port:
+                  type: integer
+                  minimum: 0
+                  maximum: 65535
+                templates:
+                  type: array
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name: {type: string}
+                      tag: {type: string}
+                      digest: {type: string}
+                scaling:
+                  type: object
+                  required: [min, max]
+                  properties:
+                    min: {type: integer, minimum: 0}
+                    max: {type: integer, minimum: 0}
+                    buffer: {type: integer, minimum: 0}
+                    capacity: {type: integer}
+                    targetUtilization: {type: number}
+                    scaleDownDelay: {type: string}
+                    drainTimeout: {type: string}
+                    maxSurge: {type: integer}
+                lifecycle:
+                  type: object
+                  properties:
+                    stopCommand: {type: string}
+                    gracePeriod: {type: string}
+                    heartbeatTimeout: {type: string}
+                    startTimeout: {type: string}
+                labels:
+                  type: object
+                  additionalProperties: {type: string}
+                priorityClassName:
+                  type: string
+            status:
+              type: object
+              properties:
+                replicas: {type: integer}
+                readyReplicas: {type: integer}
+                allocatedReplicas: {type: integer}
+                observedGeneration:
+                  type: integer
+                  format: int64
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status]
+                    properties:
+                      type: {type: string}
+                      status: {type: string}
+                      reason: {type: string}
+                      message: {type: string}
+                      observedGeneration: {type: integer, format: int64}
+                      lastTransitionTime: {type: string, format: date-time}

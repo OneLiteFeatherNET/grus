@@ -1,0 +1,21 @@
+# Runs in the cluster; the Kubernetes driver creates one pod per instance.
+apiVersion: grus.onelitefeather.net/v1alpha1
+kind: Pool
+metadata:
+  name: lobby
+spec:
+  role: game
+  mode: dynamic
+  environment: minestom
+  groups: [lobby]
+  placement:
+    driver: kubernetes
+  resources:
+    memoryMiB: 512
+    cpu: 250m
+  scaling:
+    min: 1
+    max: 4
+    buffer: 1
+    capacity: 20
+    scaleDownDelay: 2m

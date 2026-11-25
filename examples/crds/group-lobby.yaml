@@ -1,0 +1,12 @@
+apiVersion: grus.onelitefeather.net/v1alpha1
+kind: Group
+metadata:
+  name: lobby
+spec:
+  templates:
+    - name: lobby-config
+      tag: stable
+  env:
+    GRUS_REGION: eu
+  labels:
+    network: onelitefeather

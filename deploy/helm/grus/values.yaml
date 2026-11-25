@@ -34,6 +34,12 @@ controller:
   # Additional controller environment variables, name: value.
   extraEnv: {}
 
+# Custom resources (Environment, Group, Pool of grus.onelitefeather.net). The chart does not install the
+# CRDs: apply deploy/crds of the repository separately (FLUX ships them). With watch enabled the controller
+# applies the resources of its own namespace and the namespaced Role gains the matching rights.
+crds:
+  watch: false
+
 # Settings the controller applies to every instance pod it creates.
 instances:
   # Names of image pull Secrets the instance pods use (passed on as GRUS_IMAGE_PULL_SECRETS).

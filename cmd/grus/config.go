@@ -39,6 +39,7 @@ type config struct {
 	AdminToken           string
 	ProcessDir           string
 	ReconcileInterval    time.Duration
+	CRDs                 bool
 }
 
 // loadConfig parses args (the controller flags) on top of the environment read through getenv.
@@ -72,6 +73,7 @@ func loadConfig(args []string, getenv func(string) string) (config, error) {
 	debugEndpoints := str("debug-endpoints", "GRUS_DEBUG_ENDPOINTS", "false", "enable the admin debug endpoints (true/false)")
 	hostID := str("host-id", "GRUS_HOST_ID", "", "host id; default k8s-<namespace> or local")
 	processDir := str("process-dir", "GRUS_PROCESS_DIR", "./instances", "working directories of the process driver")
+	crds := str("crds", "GRUS_CRDS", "false", "watch the Grus custom resources of the namespace (true/false)")
 	interval := str("reconcile-interval", "GRUS_RECONCILE_INTERVAL", "5s", "reconcile interval")
 
 	if err := fs.Parse(args); err != nil {
@@ -119,6 +121,9 @@ func loadConfig(args []string, getenv func(string) string) (config, error) {
 	if cfg.ReconcileInterval, err = time.ParseDuration(*interval); err != nil {
 		return config{}, fmt.Errorf("GRUS_RECONCILE_INTERVAL: %w", err)
 	}
+	if cfg.CRDs, err = strconv.ParseBool(*crds); err != nil {
+		return config{}, fmt.Errorf("GRUS_CRDS: %w", err)
+	}
 	if cfg.S3Insecure, err = strconv.ParseBool(*s3Insecure); err != nil {
 		return config{}, fmt.Errorf("GRUS_S3_INSECURE: %w", err)
 	}
@@ -144,6 +149,9 @@ func (c config) validate() error {
 	}
 	if c.PublicURL == "" {
 		return errors.New("GRUS_PUBLIC_URL is required")
+	}
+	if c.CRDs && c.Namespace == "" {
+		return errors.New("GRUS_NAMESPACE is required for GRUS_CRDS")
 	}
 	switch c.TemplatesBackend {
 	case "fs":

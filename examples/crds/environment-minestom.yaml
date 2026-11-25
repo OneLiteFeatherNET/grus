@@ -1,0 +1,15 @@
+apiVersion: grus.onelitefeather.net/v1alpha1
+kind: Environment
+metadata:
+  name: minestom
+spec:
+  kind: jvm
+  image: harbor.onelitefeather.dev/onelitefeather/grus-demo-minestom:IMAGE_TAG
+  jvm:
+    jar: server.jar
+    flags: ["-XX:+UseZGC"]
+  env:
+    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+  port: 25565
+  readiness: self
+  gracePeriod: 20s

@@ -122,6 +122,18 @@ func TestV1PoolStillStartsWithItsInlineFields(t *testing.T) {
 	}
 }
 
+func TestManagedByKubernetesErrorNamesTheCustomResource(t *testing.T) {
+	f := newFixture(t, Config{})
+	if _, err := f.c.ApplyPool(f.ctx, model.SourceKubernetes, "lobby", dynamicSpec(1, 0)); err != nil {
+		t.Fatalf("apply from kubernetes: %v", err)
+	}
+	err := f.c.DeletePool(f.ctx, "lobby", false)
+	want := "managed by Kubernetes custom resource Pool/lobby; edit it with kubectl"
+	if err == nil || err.Error() != want {
+		t.Errorf("error = %v, want %q", err, want)
+	}
+}
+
 func TestAPICannotChangeOrDeleteKubernetesManagedObjects(t *testing.T) {
 	f := newFixture(t, Config{})
 	if _, err := f.c.ApplyPool(f.ctx, model.SourceKubernetes, "lobby", dynamicSpec(1, 0)); err != nil {

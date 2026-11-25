@@ -15,10 +15,20 @@ var _ Applier = (*Controller)(nil)
 // checkOwner rejects a change by source when the stored object belongs to Kubernetes.
 func checkOwner(stored, source model.Source, kind, name string) error {
 	if stored == model.SourceKubernetes && source != model.SourceKubernetes {
-		return fmt.Errorf("%w: %s %q", ErrManagedElsewhere, kind, name)
+		return &managedError{kind: kind, name: name}
 	}
 	return nil
 }
+
+// managedError is ErrManagedElsewhere with the custom resource the caller has to edit instead.
+type managedError struct{ kind, name string }
+
+func (e *managedError) Error() string {
+	kind := strings.ToUpper(e.kind[:1]) + e.kind[1:]
+	return fmt.Sprintf("managed by Kubernetes custom resource %s/%s; edit it with kubectl", kind, e.name)
+}
+
+func (e *managedError) Is(target error) bool { return target == ErrManagedElsewhere }
 
 func validateName(name string) []model.FieldError {
 	if poolNameRE.MatchString(name) {
