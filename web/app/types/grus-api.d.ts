@@ -38,6 +38,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/agents/{host}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Register an agent host or send its heartbeat */
+        put: operations["register-agent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agents/{host}/desired": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Long-poll the desired state of an agent host */
+        get: operations["get-agent-desired"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agents/{host}/observed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Report the instances an agent host runs */
+        put: operations["put-agent-observed"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/environments": {
         parameters: {
             query?: never;
@@ -137,6 +188,40 @@ export interface paths {
          * @description Pools that still name it stop starting instances. Objects owned by Kubernetes answer 409.
          */
         delete: operations["delete-group"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hosts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List agent hosts */
+        get: operations["list-hosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/hosts/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an agent host */
+        get: operations["get-host"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -484,6 +569,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Capacity: {
+            /**
+             * Format: int64
+             * @description Memory available for instances
+             */
+            memoryMiB?: number;
+        };
+        Command: {
+            instance: string;
+            line: string;
+            /** Format: int64 */
+            seq: number;
+        };
         CommandBody: {
             /**
              * Format: uri
@@ -503,6 +601,63 @@ export interface components {
             readonly $schema?: string;
             /** @description Pool that gets the new instance */
             pool: string;
+        };
+        Desired: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Desired.json
+             */
+            readonly $schema?: string;
+            commands: components["schemas"]["Command"][] | null;
+            instances: components["schemas"]["DesiredInstance"][] | null;
+            /**
+             * Format: int64
+             * @description Changes whenever the desired state changes
+             */
+            revision: number;
+        };
+        DesiredInstance: {
+            effective: components["schemas"]["EffectiveSpec"];
+            /** @description Environment of the instance as the controller built it; the agent overrides GRUS_URL */
+            env?: {
+                [key: string]: string;
+            };
+            /** Format: int64 */
+            generation: number;
+            id: string;
+            /** @description Kill the instance and forget it */
+            kill?: boolean;
+            /** Format: int64 */
+            memoryMiB?: number;
+            mode: string;
+            pool: string;
+            role: string;
+            stop: components["schemas"]["StopRequest"];
+            templates?: components["schemas"]["TemplateVersion"][] | null;
+            /** @description Plain per-instance token for GRUS_TOKEN */
+            token?: string;
+            tokenHash?: string;
+        };
+        EffectiveSpec: {
+            args?: string[] | null;
+            command?: string[] | null;
+            driver: string;
+            env?: {
+                [key: string]: string;
+            };
+            gracePeriod: string;
+            host?: string;
+            image?: string;
+            kind?: string;
+            labels?: {
+                [key: string]: string;
+            };
+            /** Format: int64 */
+            port: number;
+            readiness: string;
+            stopCommand?: string;
+            templates?: components["schemas"]["TemplateRef"][] | null;
         };
         Environment: {
             /**
@@ -621,6 +776,33 @@ export interface components {
             };
             templates?: components["schemas"]["TemplateRef"][] | null;
         };
+        HostInfo: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/HostInfo.json
+             */
+            readonly $schema?: string;
+            address?: string;
+            capacity?: components["schemas"]["Capacity"];
+            /**
+             * Format: int64
+             * @description Instances the agent reported
+             */
+            instances: number;
+            labels?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: date-time
+             * @description Last contact of the agent; absent when it never connected
+             */
+            lastSeen?: string;
+            name: string;
+            online: boolean;
+            portRange?: string;
+            version?: string;
+        };
         Instance: {
             /**
              * Format: uri
@@ -689,6 +871,43 @@ export interface components {
             /** Format: int64 */
             proxies: number;
         };
+        ObservedInstance: {
+            address?: string;
+            /** Format: int64 */
+            generation?: number;
+            id: string;
+            mode?: string;
+            phase: string;
+            pool?: string;
+            reason?: string;
+            role?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            tokenHash?: string;
+        };
+        ObservedReport: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ObservedReport.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Highest console command sequence number the agent has applied
+             */
+            commandSeq?: number;
+            instances: components["schemas"]["ObservedInstance"][] | null;
+            /** @description Last console lines per instance id */
+            logs?: {
+                [key: string]: string[] | null;
+            };
+            /**
+             * Format: int64
+             * @description Desired revision the agent has applied before this report
+             */
+            revision: number;
+        };
         Placement: {
             driver?: string;
             host?: string;
@@ -748,6 +967,25 @@ export interface components {
             idleTimeout?: string;
             /** Format: int64 */
             quotaPerOwner?: number;
+        };
+        RegisterRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RegisterRequest.json
+             */
+            readonly $schema?: string;
+            /** @description IP address proxies use to reach instances on this host */
+            address?: string;
+            capacity?: components["schemas"]["Capacity"];
+            /** @description Free host labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** @description Instance port range, e.g. 30000-30100 */
+            portRange?: string;
+            /** @description Agent version */
+            version?: string;
         };
         Resources: {
             cpu?: string;
@@ -809,6 +1047,16 @@ export interface components {
             drain?: boolean;
             force?: boolean;
         };
+        StopRequest: {
+            /** @description Console line that triggers a clean shutdown */
+            command?: string;
+            /**
+             * Format: int64
+             * @description Time before the agent sends SIGTERM
+             */
+            graceSeconds?: number;
+            requested: boolean;
+        };
         TagBody: {
             /**
              * Format: uri
@@ -823,6 +1071,10 @@ export interface components {
             digest?: string;
             name: string;
             tag?: string;
+        };
+        TemplateVersion: {
+            digest: string;
+            name: string;
         };
     };
     responses: never;
@@ -878,6 +1130,113 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+        };
+    };
+    "register-agent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Agent host name */
+                host: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostInfo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-agent-desired": {
+        parameters: {
+            query?: {
+                /** @description How long the request may wait for a change, as a duration (max 60s) */
+                wait?: string;
+                /** @description Revision the agent already has; the call returns at once when it differs */
+                revision?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Agent host name */
+                host: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Desired"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "put-agent-observed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Agent host name */
+                host: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObservedReport"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
                 };
             };
         };
@@ -1162,6 +1521,67 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-hosts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostInfo"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-host": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Host name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostInfo"];
+                };
             };
             /** @description Error */
             default: {
