@@ -1,0 +1,13 @@
+{
+  "overview": {
+    "title": "Übersicht",
+    "subtitle": "Pools und laufende Instanzen auf einen Blick",
+    "poolsLabel": "Pools",
+    "role": "Rolle",
+    "mode": "Modus",
+    "instances": "Instanzen",
+    "serving": "{serving} von {total} aktiv",
+    "maintenance": "Wartung",
+    "empty": "Noch keine Pools angelegt"
+  }
+}

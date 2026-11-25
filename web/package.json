@@ -1,0 +1,43 @@
+{
+  "name": "grus-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Grus web UI (Nuxt BFF in front of the Grus control-plane API)",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "start": "node .output/server/index.mjs",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run --maxWorkers=2",
+    "tokens": "node scripts/m3-tokens.mjs",
+    "gen:api": "openapi-typescript ../api/openapi.yaml -o app/types/grus-api.d.ts"
+  },
+  "dependencies": {
+    "@fontsource/roboto": "^5.3.0",
+    "@mdi/js": "^7.4.47",
+    "@nuxtjs/i18n": "^10.6.0",
+    "nuxt": "^4.7.0",
+    "vue": "^3.5.46"
+  },
+  "devDependencies": {
+    "@material/material-color-utilities": "^0.3.0",
+    "@nuxt/eslint": "^1.17.0",
+    "@tailwindcss/vite": "^4.3.5",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vue/test-utils": "^2.6.0",
+    "eslint": "^10.15.0",
+    "happy-dom": "^21.0.4",
+    "openapi-typescript": "^7.13.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.1",
+    "vue-tsc": "^3.3.14"
+  }
+}

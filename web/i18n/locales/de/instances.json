@@ -1,0 +1,21 @@
+{
+  "instances": {
+    "title": "Instanzen",
+    "subtitle": "Lebenszyklus der laufenden Server",
+    "placeholder": "Die Instanzliste folgt in Kürze",
+    "states": {
+      "Requested": "Angefordert",
+      "Scheduled": "Eingeplant",
+      "Preparing": "Wird vorbereitet",
+      "Starting": "Startet",
+      "Ready": "Bereit",
+      "Allocated": "Zugewiesen",
+      "Unhealthy": "Unzuverlässig",
+      "Draining": "Leert sich",
+      "Stopping": "Wird gestoppt",
+      "Stopped": "Gestoppt",
+      "Failed": "Fehlgeschlagen",
+      "Lost": "Verloren"
+    }
+  }
+}
