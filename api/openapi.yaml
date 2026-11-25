@@ -34,6 +34,83 @@ components:
       required:
         - pool
       type: object
+    Environment:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Environment.json
+          format: uri
+          readOnly: true
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        generation:
+          format: int64
+          type: integer
+        name:
+          type: string
+        source:
+          type: string
+        spec:
+          $ref: "#/components/schemas/EnvironmentSpec"
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - name
+        - spec
+        - source
+        - generation
+        - createdAt
+        - updatedAt
+      type: object
+    EnvironmentSpec:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/EnvironmentSpec.json
+          format: uri
+          readOnly: true
+          type: string
+        args:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        command:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        env:
+          additionalProperties:
+            type: string
+          type: object
+        gracePeriod:
+          type: string
+        image:
+          type: string
+        jvm:
+          $ref: "#/components/schemas/JVM"
+        kind:
+          type: string
+        port:
+          format: int64
+          type: integer
+        readiness:
+          type: string
+        stopCommand:
+          type: string
+      required:
+        - kind
+      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -92,6 +169,64 @@ components:
             - https://example.com/errors/example
           format: uri
           type: string
+      type: object
+    Group:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Group.json
+          format: uri
+          readOnly: true
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        generation:
+          format: int64
+          type: integer
+        name:
+          type: string
+        source:
+          type: string
+        spec:
+          $ref: "#/components/schemas/GroupSpec"
+        updatedAt:
+          format: date-time
+          type: string
+      required:
+        - name
+        - spec
+        - source
+        - generation
+        - createdAt
+        - updatedAt
+      type: object
+    GroupSpec:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/GroupSpec.json
+          format: uri
+          readOnly: true
+          type: string
+        env:
+          additionalProperties:
+            type: string
+          type: object
+        labels:
+          additionalProperties:
+            type: string
+          type: object
+        templates:
+          items:
+            $ref: "#/components/schemas/TemplateRef"
+          type:
+            - array
+            - "null"
       type: object
     Instance:
       additionalProperties: false
@@ -156,6 +291,20 @@ components:
         - maxPlayers
         - createdAt
       type: object
+    JVM:
+      additionalProperties: false
+      properties:
+        flags:
+          description: JVM flags placed before -Xmx and -jar
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        jar:
+          description: Jar file inside the instance directory
+          type: string
+      type: object
     Lifecycle:
       additionalProperties: false
       properties:
@@ -183,6 +332,38 @@ components:
       required:
         - enabled
       type: object
+    NetworkStatus:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/NetworkStatus.json
+          format: uri
+          readOnly: true
+          type: string
+        maxPlayers:
+          format: int64
+          type: integer
+        players:
+          format: int64
+          type: integer
+        proxies:
+          format: int64
+          type: integer
+      required:
+        - players
+        - maxPlayers
+        - proxies
+      type: object
+    Placement:
+      additionalProperties: false
+      properties:
+        driver:
+          type: string
+        host:
+          type: string
+      type: object
     Pool:
       additionalProperties: false
       properties:
@@ -202,6 +383,8 @@ components:
         maintenance:
           type: boolean
         name:
+          type: string
+        source:
           type: string
         spec:
           $ref: "#/components/schemas/PoolSpec"
@@ -244,6 +427,14 @@ components:
           additionalProperties:
             type: string
           type: object
+        environment:
+          type: string
+        groups:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
         image:
           type: string
         labels:
@@ -254,11 +445,15 @@ components:
           $ref: "#/components/schemas/Lifecycle"
         mode:
           type: string
+        placement:
+          $ref: "#/components/schemas/Placement"
         port:
           format: int64
           type: integer
         priorityClassName:
           type: string
+        private:
+          $ref: "#/components/schemas/Private"
         resources:
           $ref: "#/components/schemas/Resources"
         role:
@@ -271,6 +466,8 @@ components:
           type:
             - array
             - "null"
+        sharding:
+          $ref: "#/components/schemas/Sharding"
         templates:
           items:
             $ref: "#/components/schemas/TemplateRef"
@@ -280,9 +477,17 @@ components:
       required:
         - role
         - mode
-        - driver
         - resources
         - scaling
+      type: object
+    Private:
+      additionalProperties: false
+      properties:
+        idleTimeout:
+          type: string
+        quotaPerOwner:
+          format: int64
+          type: integer
       type: object
     Resources:
       additionalProperties: false
@@ -337,6 +542,21 @@ components:
         - name
         - secret
         - key
+      type: object
+    Sharding:
+      additionalProperties: false
+      properties:
+        cellSize:
+          description: Cell edge length in chunks
+          format: int64
+          type: integer
+        cells:
+          description: Explicit cell names
+          items:
+            type: string
+          type:
+            - array
+            - "null"
       type: object
     StatusUpdate:
       additionalProperties: false
@@ -443,6 +663,112 @@ paths:
                 type: string
           description: not ready
       summary: Readiness
+  /v1/environments:
+    get:
+      operationId: list-environments
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Environment"
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: List environments
+  /v1/environments/{name}:
+    delete:
+      description: Pools that still name it stop starting instances. Objects owned by Kubernetes answer 409.
+      operationId: delete-environment
+      parameters:
+        - description: Object name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Object name
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Delete an environment
+    get:
+      operationId: get-environment
+      parameters:
+        - description: Object name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Object name
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Environment"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Get an environment
+    put:
+      description: Idempotent. Generation increases when the spec changes. Objects owned by Kubernetes answer 409.
+      operationId: put-environment
+      parameters:
+        - description: Environment name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Environment name
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvironmentSpec"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Environment"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Create or replace an environment
   /v1/events:
     get:
       description: Each event has an `event:` type, an `id:` sequence and JSON `data:`. Resume with `Last-Event-ID`.
@@ -469,6 +795,112 @@ paths:
       security:
         - bearer: []
       summary: Event stream (server-sent events)
+  /v1/groups:
+    get:
+      operationId: list-groups
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Group"
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: List groups
+  /v1/groups/{name}:
+    delete:
+      description: Pools that still name it stop starting instances. Objects owned by Kubernetes answer 409.
+      operationId: delete-group
+      parameters:
+        - description: Object name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Object name
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Delete a group
+    get:
+      operationId: get-group
+      parameters:
+        - description: Object name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Object name
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Get a group
+    put:
+      description: Idempotent. Generation increases when the spec changes. Objects owned by Kubernetes answer 409.
+      operationId: put-group
+      parameters:
+        - description: Group name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Group name
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupSpec"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Group"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Create or replace a group
   /v1/instances:
     get:
       operationId: list-instances
@@ -696,6 +1128,26 @@ paths:
       security:
         - bearer: []
       summary: Stop an instance; with players it needs drain or force
+  /v1/network:
+    get:
+      description: Players and capacity summed over all Ready and Allocated proxy instances. The SSE event network.players is published whenever the sum changes.
+      operationId: get-network
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NetworkStatus"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Get the network player count
   /v1/pools:
     get:
       operationId: list-pools

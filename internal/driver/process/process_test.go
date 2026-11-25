@@ -425,3 +425,16 @@ func TestForgetRefusesRunningInstance(t *testing.T) {
 		t.Error("Forget of a running instance returned nil error, want an error")
 	}
 }
+
+func TestStartRunsTheEffectiveCommandInsteadOfThePoolCommand(t *testing.T) {
+	h := newHarness(t, nil)
+	spec := h.spec("inst-eff", nil)
+	spec.Pool.Spec.Command = []string{"/nonexistent/v1-binary"}
+	spec.Effective = model.EffectiveSpec{Driver: "process", Command: []string{os.Args[0]}}
+
+	ref, err := h.d.Start(h.ctx, spec)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	h.waitPhase(ref, driver.PhaseRunning)
+}

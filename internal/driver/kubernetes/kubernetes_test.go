@@ -729,3 +729,25 @@ func listOne(t *testing.T, pod *corev1.Pod) driver.Observed {
 	}
 	return obs[0]
 }
+
+func TestStartPrefersEffectiveSpecOverV1PoolFields(t *testing.T) {
+	d, _ := newTestDriver(t)
+	spec := testStartSpec(false)
+	spec.Effective = model.EffectiveSpec{
+		Driver: "kubernetes", Image: "registry.example/paper:9", Command: []string{"run"}, Args: []string{"--x"},
+		Port: 30000, GracePeriod: model.Duration(45 * time.Second), Labels: map[string]string{"from": "group"},
+	}
+	pod := startPod(t, d, spec)
+
+	server := containerNamed(t, pod.Spec.Containers, "server")
+	if server.Image != "registry.example/paper:9" || !reflect.DeepEqual(server.Command, []string{"run"}) ||
+		!reflect.DeepEqual(server.Args, []string{"--x"}) || server.Ports[0].ContainerPort != 30000 {
+		t.Errorf("server container ignores the effective spec: %+v", server)
+	}
+	if pod.Labels["from"] != "group" {
+		t.Errorf("labels = %v, want the effective labels", pod.Labels)
+	}
+	if pod.Spec.TerminationGracePeriodSeconds == nil || *pod.Spec.TerminationGracePeriodSeconds != 45 {
+		t.Errorf("termination grace = %v, want 45", pod.Spec.TerminationGracePeriodSeconds)
+	}
+}

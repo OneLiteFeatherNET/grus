@@ -38,6 +38,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List environments */
+        get: operations["list-environments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/environments/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an environment */
+        get: operations["get-environment"];
+        /**
+         * Create or replace an environment
+         * @description Idempotent. Generation increases when the spec changes. Objects owned by Kubernetes answer 409.
+         */
+        put: operations["put-environment"];
+        post?: never;
+        /**
+         * Delete an environment
+         * @description Pools that still name it stop starting instances. Objects owned by Kubernetes answer 409.
+         */
+        delete: operations["delete-environment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events": {
         parameters: {
             query?: never;
@@ -53,6 +95,48 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List groups */
+        get: operations["list-groups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/groups/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a group */
+        get: operations["get-group"];
+        /**
+         * Create or replace a group
+         * @description Idempotent. Generation increases when the spec changes. Objects owned by Kubernetes answer 409.
+         */
+        put: operations["put-group"];
+        post?: never;
+        /**
+         * Delete a group
+         * @description Pools that still name it stop starting instances. Objects owned by Kubernetes answer 409.
+         */
+        delete: operations["delete-group"];
         options?: never;
         head?: never;
         patch?: never;
@@ -158,6 +242,26 @@ export interface paths {
         put?: never;
         /** Stop an instance; with players it needs drain or force */
         post: operations["stop-instance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the network player count
+         * @description Players and capacity summed over all Ready and Allocated proxy instances. The SSE event network.players is published whenever the sum changes.
+         */
+        get: operations["get-network"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -400,6 +504,44 @@ export interface components {
             /** @description Pool that gets the new instance */
             pool: string;
         };
+        Environment: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Environment.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            generation: number;
+            name: string;
+            source: string;
+            spec: components["schemas"]["EnvironmentSpec"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        EnvironmentSpec: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/EnvironmentSpec.json
+             */
+            readonly $schema?: string;
+            args?: string[] | null;
+            command?: string[] | null;
+            env?: {
+                [key: string]: string;
+            };
+            gracePeriod?: string;
+            image?: string;
+            jvm?: components["schemas"]["JVM"];
+            kind: string;
+            /** Format: int64 */
+            port?: number;
+            readiness?: string;
+            stopCommand?: string;
+        };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
             location?: string;
@@ -447,6 +589,38 @@ export interface components {
              */
             type: string;
         };
+        Group: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Group.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            generation: number;
+            name: string;
+            source: string;
+            spec: components["schemas"]["GroupSpec"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        GroupSpec: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/GroupSpec.json
+             */
+            readonly $schema?: string;
+            env?: {
+                [key: string]: string;
+            };
+            labels?: {
+                [key: string]: string;
+            };
+            templates?: components["schemas"]["TemplateRef"][] | null;
+        };
         Instance: {
             /**
              * Format: uri
@@ -480,6 +654,12 @@ export interface components {
             /** Format: date-time */
             stateSince: string;
         };
+        JVM: {
+            /** @description JVM flags placed before -Xmx and -jar */
+            flags?: string[] | null;
+            /** @description Jar file inside the instance directory */
+            jar?: string;
+        };
         Lifecycle: {
             gracePeriod?: string;
             heartbeatTimeout?: string;
@@ -495,6 +675,24 @@ export interface components {
             readonly $schema?: string;
             enabled: boolean;
         };
+        NetworkStatus: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/NetworkStatus.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            maxPlayers: number;
+            /** Format: int64 */
+            players: number;
+            /** Format: int64 */
+            proxies: number;
+        };
+        Placement: {
+            driver?: string;
+            host?: string;
+        };
         Pool: {
             /**
              * Format: uri
@@ -508,6 +706,7 @@ export interface components {
             generation: number;
             maintenance: boolean;
             name: string;
+            source?: string;
             spec: components["schemas"]["PoolSpec"];
             /** Format: date-time */
             updatedAt: string;
@@ -521,24 +720,34 @@ export interface components {
             readonly $schema?: string;
             args?: string[] | null;
             command?: string[] | null;
-            driver: string;
+            driver?: string;
             env?: {
                 [key: string]: string;
             };
+            environment?: string;
+            groups?: string[] | null;
             image?: string;
             labels?: {
                 [key: string]: string;
             };
             lifecycle?: components["schemas"]["Lifecycle"];
             mode: string;
+            placement?: components["schemas"]["Placement"];
             /** Format: int64 */
             port?: number;
             priorityClassName?: string;
+            private?: components["schemas"]["Private"];
             resources: components["schemas"]["Resources"];
             role: string;
             scaling: components["schemas"]["Scaling"];
             secretEnv?: components["schemas"]["SecretRef"][] | null;
+            sharding?: components["schemas"]["Sharding"];
             templates?: components["schemas"]["TemplateRef"][] | null;
+        };
+        Private: {
+            idleTimeout?: string;
+            /** Format: int64 */
+            quotaPerOwner?: number;
         };
         Resources: {
             cpu?: string;
@@ -565,6 +774,15 @@ export interface components {
             key: string;
             name: string;
             secret: string;
+        };
+        Sharding: {
+            /**
+             * Format: int64
+             * @description Cell edge length in chunks
+             */
+            cellSize?: number;
+            /** @description Explicit cell names */
+            cells?: string[] | null;
         };
         StatusUpdate: {
             /**
@@ -664,6 +882,133 @@ export interface operations {
             };
         };
     };
+    "list-environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Environment"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-environment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Environment"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "put-environment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Environment name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnvironmentSpec"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Environment"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-environment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "stream-events": {
         parameters: {
             query?: never;
@@ -698,6 +1043,133 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": Record<string, never>;
+                };
+            };
+        };
+    };
+    "list-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Group"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Group"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "put-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Group name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupSpec"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Group"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Object name */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
                 };
             };
         };
@@ -940,6 +1412,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Instance"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkStatus"];
                 };
             };
             /** @description Error */

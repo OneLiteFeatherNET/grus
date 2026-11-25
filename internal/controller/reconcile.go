@@ -175,6 +175,10 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 				break
 			}
 			if _, err := c.createInstance(ctx, p); err != nil {
+				var ve *ValidationError
+				if errors.As(err, &ve) {
+					break // unknown environment or group: reported once as pool.condition, retried next cycle
+				}
 				errs = append(errs, fmt.Errorf("create instance of pool %s: %w", p.Name, err))
 				break
 			}
@@ -244,11 +248,11 @@ func (c *Controller) reconcileInstance(ctx context.Context, inst model.Instance,
 		}
 	case model.StateUnhealthy:
 		if spec.Mode == model.ModeDynamic && now.Sub(inst.StateSince) > lc.HeartbeatTimeout.D() {
-			return c.stop(ctx, inst, state.InStop, "unhealthy", lc)
+			return c.stop(ctx, inst, state.InStop, "unhealthy", c.lifecycleOf(ctx, inst.Pool))
 		}
 	case model.StateDraining:
 		if inst.Players == 0 || now.Sub(inst.StateSince) > spec.Scaling.DrainTimeout.D() {
-			return c.stop(ctx, inst, state.InStop, "drained", lc)
+			return c.stop(ctx, inst, state.InStop, "drained", c.lifecycleOf(ctx, inst.Pool))
 		}
 	}
 	return inst, nil
