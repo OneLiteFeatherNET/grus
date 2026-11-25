@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -31,6 +32,12 @@ const (
 	scopeEventsRead     = "events:read"
 	scopeTemplatesRead  = "templates:read"
 	scopeTemplatesWrite = "templates:write"
+	// scopeTemplatesArchive covers downloading one template version; instances and agents have it.
+	scopeTemplatesArchive = "templates:archive"
+	// scopeAgent covers the /v1/agents/{host} routes; an agent principal is bound to its own host.
+	scopeAgent = "agent"
+	// scopeHostsRead covers GET /v1/hosts; only the admin token has it.
+	scopeHostsRead = "hosts:read"
 )
 
 // metaScope is the huma Operation.Metadata key holding the scope an operation requires.
@@ -40,6 +47,7 @@ const metaScope = "grus.scope"
 type principal struct {
 	admin      bool
 	instanceID string
+	agentHost  string // set for agent tokens: the only host whose paths the principal may use
 	scopes     map[string]bool
 }
 
@@ -61,6 +69,8 @@ func instancePrincipal(inst model.Instance) principal {
 		scopeInstancesRead:  true,
 		scopePlayersConnect: true,
 		scopeTemplatesRead:  true,
+
+		scopeTemplatesArchive: true,
 	}
 	if inst.Role == model.RoleProxy {
 		scopes[scopeEventsRead] = true
@@ -68,6 +78,11 @@ func instancePrincipal(inst model.Instance) principal {
 		scopes[scopePresenceWrite] = true
 	}
 	return principal{instanceID: inst.ID, scopes: scopes}
+}
+
+// agentPrincipal is the principal of an agent token: its own host routes and template downloads.
+func agentPrincipal(host string) principal {
+	return principal{agentHost: host, scopes: map[string]bool{scopeAgent: true, scopeTemplatesArchive: true}}
 }
 
 type principalKey struct{}
@@ -89,12 +104,19 @@ type authenticator struct {
 	// adminDigest is the SHA-256 of the admin token; hashing first makes the comparison length independent.
 	adminDigest [sha256.Size]byte
 	adminSet    bool
-	svc         controller.Service
-	log         *slog.Logger
+	// agents maps a host to the SHA-256 of its agent token.
+	agents map[string][sha256.Size]byte
+	svc    controller.Service
+	log    *slog.Logger
 }
 
-func newAuthenticator(adminToken string, svc controller.Service, logger *slog.Logger) *authenticator {
-	a := &authenticator{svc: svc, log: logger}
+func newAuthenticator(adminToken string, agentTokens map[string]string, svc controller.Service, logger *slog.Logger) *authenticator {
+	a := &authenticator{svc: svc, log: logger, agents: make(map[string][sha256.Size]byte, len(agentTokens))}
+	for host, hexHash := range agentTokens {
+		if raw, err := hex.DecodeString(hexHash); err == nil && len(raw) == sha256.Size {
+			a.agents[host] = [sha256.Size]byte(raw)
+		}
+	}
 	if adminToken != "" {
 		a.adminDigest = sha256.Sum256([]byte(adminToken))
 		a.adminSet = true
@@ -116,6 +138,19 @@ func (a *authenticator) authenticate(ctx context.Context, header string) (princi
 		digest := sha256.Sum256([]byte(token))
 		if subtle.ConstantTimeCompare(digest[:], a.adminDigest[:]) == 1 {
 			return adminPrincipal, nil
+		}
+	}
+	if len(a.agents) > 0 {
+		digest := sha256.Sum256([]byte(token))
+		matched := ""
+		for host, want := range a.agents {
+			// Every host is compared so the time does not tell which host matched.
+			if subtle.ConstantTimeCompare(digest[:], want[:]) == 1 {
+				matched = host
+			}
+		}
+		if matched != "" {
+			return agentPrincipal(matched), nil
 		}
 	}
 	inst, err := a.svc.AuthenticateInstance(ctx, token)
@@ -140,6 +175,10 @@ func (a *authenticator) middleware(api huma.API) func(huma.Context, func(huma.Co
 		scope, _ := ctx.Operation().Metadata[metaScope].(string)
 		if !p.has(scope) {
 			_ = huma.WriteErr(api, ctx, http.StatusForbidden, "token lacks scope "+scope)
+			return
+		}
+		if host := ctx.Param("host"); host != "" && p.agentHost != "" && host != p.agentHost {
+			_ = huma.WriteErr(api, ctx, http.StatusForbidden, "token is bound to another host")
 			return
 		}
 		next(huma.WithContext(ctx, withPrincipal(ctx.Context(), p)))

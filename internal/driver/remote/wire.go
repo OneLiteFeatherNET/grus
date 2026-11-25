@@ -25,8 +25,8 @@ type RegisterRequest struct {
 	PortRange string            `json:"portRange,omitempty" doc:"Instance port range, e.g. 30000-30100"`
 }
 
-// TemplateRef is a template version the agent fetches before it starts an instance.
-type TemplateRef struct {
+// TemplateVersion is a template version the agent fetches before it starts an instance.
+type TemplateVersion struct {
 	Name   string `json:"name"`
 	Digest string `json:"digest"`
 }
@@ -50,7 +50,7 @@ type DesiredInstance struct {
 	TokenHash  string              `json:"tokenHash,omitempty"`
 	Effective  model.EffectiveSpec `json:"effective"`
 	Env        map[string]string   `json:"env,omitempty" doc:"Environment of the instance as the controller built it; the agent overrides GRUS_URL"`
-	Templates  []TemplateRef       `json:"templates,omitempty"`
+	Templates  []TemplateVersion       `json:"templates,omitempty"`
 	MemoryMiB  int                 `json:"memoryMiB,omitempty"`
 	Stop       StopRequest         `json:"stop"`
 	Kill       bool                `json:"kill,omitempty" doc:"Kill the instance and forget it"`

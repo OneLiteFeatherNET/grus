@@ -1,5 +1,28 @@
 components:
   schemas:
+    Capacity:
+      additionalProperties: false
+      properties:
+        memoryMiB:
+          description: Memory available for instances
+          format: int64
+          type: integer
+      type: object
+    Command:
+      additionalProperties: false
+      properties:
+        instance:
+          type: string
+        line:
+          type: string
+        seq:
+          format: int64
+          type: integer
+      required:
+        - seq
+        - instance
+        - line
+      type: object
     CommandBody:
       additionalProperties: false
       properties:
@@ -33,6 +56,138 @@ components:
           type: string
       required:
         - pool
+      type: object
+    Desired:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/Desired.json
+          format: uri
+          readOnly: true
+          type: string
+        commands:
+          items:
+            $ref: "#/components/schemas/Command"
+          type:
+            - array
+            - "null"
+        instances:
+          items:
+            $ref: "#/components/schemas/DesiredInstance"
+          type:
+            - array
+            - "null"
+        revision:
+          description: Changes whenever the desired state changes
+          format: int64
+          type: integer
+      required:
+        - revision
+        - instances
+        - commands
+      type: object
+    DesiredInstance:
+      additionalProperties: false
+      properties:
+        effective:
+          $ref: "#/components/schemas/EffectiveSpec"
+        env:
+          additionalProperties:
+            type: string
+          description: Environment of the instance as the controller built it; the agent overrides GRUS_URL
+          type: object
+        generation:
+          format: int64
+          type: integer
+        id:
+          type: string
+        kill:
+          description: Kill the instance and forget it
+          type: boolean
+        memoryMiB:
+          format: int64
+          type: integer
+        mode:
+          type: string
+        pool:
+          type: string
+        role:
+          type: string
+        stop:
+          $ref: "#/components/schemas/StopRequest"
+        templates:
+          items:
+            $ref: "#/components/schemas/TemplateVersion"
+          type:
+            - array
+            - "null"
+        token:
+          description: Plain per-instance token for GRUS_TOKEN
+          type: string
+        tokenHash:
+          type: string
+      required:
+        - id
+        - pool
+        - role
+        - mode
+        - generation
+        - effective
+        - stop
+      type: object
+    EffectiveSpec:
+      additionalProperties: false
+      properties:
+        args:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        command:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        driver:
+          type: string
+        env:
+          additionalProperties:
+            type: string
+          type: object
+        gracePeriod:
+          type: string
+        host:
+          type: string
+        image:
+          type: string
+        kind:
+          type: string
+        labels:
+          additionalProperties:
+            type: string
+          type: object
+        port:
+          format: int64
+          type: integer
+        readiness:
+          type: string
+        stopCommand:
+          type: string
+        templates:
+          items:
+            $ref: "#/components/schemas/TemplateRef"
+          type:
+            - array
+            - "null"
+      required:
+        - driver
+        - port
+        - readiness
+        - gracePeriod
       type: object
     Environment:
       additionalProperties: false
@@ -228,6 +383,45 @@ components:
             - array
             - "null"
       type: object
+    HostInfo:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/HostInfo.json
+          format: uri
+          readOnly: true
+          type: string
+        address:
+          type: string
+        capacity:
+          $ref: "#/components/schemas/Capacity"
+        instances:
+          description: Instances the agent reported
+          format: int64
+          type: integer
+        labels:
+          additionalProperties:
+            type: string
+          type: object
+        lastSeen:
+          description: Last contact of the agent; absent when it never connected
+          format: date-time
+          type: string
+        name:
+          type: string
+        online:
+          type: boolean
+        portRange:
+          type: string
+        version:
+          type: string
+      required:
+        - name
+        - online
+        - instances
+      type: object
     Instance:
       additionalProperties: false
       properties:
@@ -355,6 +549,72 @@ components:
         - players
         - maxPlayers
         - proxies
+      type: object
+    ObservedInstance:
+      additionalProperties: false
+      properties:
+        address:
+          type: string
+        generation:
+          format: int64
+          type: integer
+        id:
+          type: string
+        mode:
+          type: string
+        phase:
+          type: string
+        pool:
+          type: string
+        reason:
+          type: string
+        role:
+          type: string
+        startedAt:
+          format: date-time
+          type: string
+        tokenHash:
+          type: string
+      required:
+        - id
+        - phase
+      type: object
+    ObservedReport:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ObservedReport.json
+          format: uri
+          readOnly: true
+          type: string
+        commandSeq:
+          description: Highest console command sequence number the agent has applied
+          format: int64
+          type: integer
+        instances:
+          items:
+            $ref: "#/components/schemas/ObservedInstance"
+          type:
+            - array
+            - "null"
+        logs:
+          additionalProperties:
+            items:
+              type: string
+            type:
+              - array
+              - "null"
+          description: Last console lines per instance id
+          type: object
+        revision:
+          description: Desired revision the agent has applied before this report
+          format: int64
+          type: integer
+      required:
+        - revision
+        - instances
       type: object
     Placement:
       additionalProperties: false
@@ -489,6 +749,33 @@ components:
           format: int64
           type: integer
       type: object
+    RegisterRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RegisterRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        address:
+          description: IP address proxies use to reach instances on this host
+          type: string
+        capacity:
+          $ref: "#/components/schemas/Capacity"
+        labels:
+          additionalProperties:
+            type: string
+          description: Free host labels
+          type: object
+        portRange:
+          description: Instance port range, e.g. 30000-30100
+          type: string
+        version:
+          description: Agent version
+          type: string
+      type: object
     Resources:
       additionalProperties: false
       properties:
@@ -597,6 +884,21 @@ components:
         force:
           type: boolean
       type: object
+    StopRequest:
+      additionalProperties: false
+      properties:
+        command:
+          description: Console line that triggers a clean shutdown
+          type: string
+        graceSeconds:
+          description: Time before the agent sends SIGTERM
+          format: int64
+          type: integer
+        requested:
+          type: boolean
+      required:
+        - requested
+      type: object
     TagBody:
       additionalProperties: false
       properties:
@@ -625,6 +927,17 @@ components:
           type: string
       required:
         - name
+      type: object
+    TemplateVersion:
+      additionalProperties: false
+      properties:
+        digest:
+          type: string
+        name:
+          type: string
+      required:
+        - name
+        - digest
       type: object
   securitySchemes:
     bearer:
@@ -663,6 +976,115 @@ paths:
                 type: string
           description: not ready
       summary: Readiness
+  /v1/agents/{host}:
+    put:
+      operationId: register-agent
+      parameters:
+        - description: Agent host name
+          in: path
+          name: host
+          required: true
+          schema:
+            description: Agent host name
+            pattern: ^[a-z0-9][a-z0-9._-]{0,62}$
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostInfo"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Register an agent host or send its heartbeat
+  /v1/agents/{host}/desired:
+    get:
+      operationId: get-agent-desired
+      parameters:
+        - description: Agent host name
+          in: path
+          name: host
+          required: true
+          schema:
+            description: Agent host name
+            pattern: ^[a-z0-9][a-z0-9._-]{0,62}$
+            type: string
+        - description: How long the request may wait for a change, as a duration (max 60s)
+          explode: false
+          in: query
+          name: wait
+          schema:
+            default: 25s
+            description: How long the request may wait for a change, as a duration (max 60s)
+            type: string
+        - description: Revision the agent already has; the call returns at once when it differs
+          explode: false
+          in: query
+          name: revision
+          schema:
+            default: -1
+            description: Revision the agent already has; the call returns at once when it differs
+            format: int64
+            type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Desired"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Long-poll the desired state of an agent host
+  /v1/agents/{host}/observed:
+    put:
+      operationId: put-agent-observed
+      parameters:
+        - description: Agent host name
+          in: path
+          name: host
+          required: true
+          schema:
+            description: Agent host name
+            pattern: ^[a-z0-9][a-z0-9._-]{0,62}$
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObservedReport"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Report the instances an agent host runs
   /v1/environments:
     get:
       operationId: list-environments
@@ -901,6 +1323,56 @@ paths:
       security:
         - bearer: []
       summary: Create or replace a group
+  /v1/hosts:
+    get:
+      operationId: list-hosts
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/HostInfo"
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: List agent hosts
+  /v1/hosts/{name}:
+    get:
+      operationId: get-host
+      parameters:
+        - description: Host name
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Host name
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostInfo"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - bearer: []
+      summary: Get an agent host
   /v1/instances:
     get:
       operationId: list-instances

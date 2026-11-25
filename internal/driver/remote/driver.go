@@ -150,9 +150,9 @@ func (d *Driver) Start(_ context.Context, spec driver.StartSpec) (string, error)
 	if len(eff.Command) == 0 {
 		return "", errors.New("remote: effective spec has no command")
 	}
-	refs := make([]TemplateRef, len(spec.Templates))
+	refs := make([]TemplateVersion, len(spec.Templates))
 	for i, t := range spec.Templates {
-		refs[i] = TemplateRef{Name: t.Name, Digest: t.Digest}
+		refs[i] = TemplateVersion{Name: t.Name, Digest: t.Digest}
 	}
 
 	d.mu.Lock()

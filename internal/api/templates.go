@@ -56,7 +56,7 @@ func (s *server) registerTemplates(api huma.API) {
 		return nil, nil
 	})
 
-	huma.Register(api, operation(scopeTemplatesRead, huma.Operation{
+	huma.Register(api, operation(scopeTemplatesArchive, huma.Operation{
 		OperationID: "get-template-archive", Method: http.MethodGet,
 		Path:    "/v1/templates/{name}/versions/{digest}/archive",
 		Summary: "Download a template version as tar.gz",
