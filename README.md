@@ -77,6 +77,24 @@ at the quota gets 409. `DELETE /v1/private-servers/{id}` drains the server. An i
 World persistence is spec only for now: a later version snapshots the instance directory to a template on
 stop and restores it on the next start.
 
+## Region cells
+
+A pool with a `sharding` section splits its world into cells (`cells[]` with chunk bounds `minX/minZ/maxX/maxZ`,
+inclusive; `cellSize` in chunks defaults to 32 and is only used once cells are generated). The controller gives
+each cell to exactly one Ready instance of the pool and stores it as the instance label `grus.olf/cells`. An
+assignment stays while its instance is Ready; cells of a failed or lost instance move to the Ready instance with
+the fewest cells. Every change publishes `pool.cells`. Splitting and merging cells with the load is spec only.
+
+```sh
+grus cells world
+curl -H "Authorization: Bearer $TOKEN" "$GRUS_URL/v1/pools/world/cells/at?x=520&z=10"
+```
+
+`GET /v1/pools/{pool}/cells` lists cell, bounds, instance and address; `GET /v1/pools/{pool}/cells/at?x=&z=` takes
+block coordinates (chunk = block >> 4) and answers with the owning cell (404 when no cell covers the block, 409
+while the cell has no Ready instance). The Velocity plugin adds `/region <x> <z>` (permission `grus.region`) for
+the pool named in `GRUS_SHARD_POOL`.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

@@ -31,6 +31,20 @@ type deletePoolInput struct {
 	Drain bool   `query:"drain" doc:"Drain the instances before the pool is removed"`
 }
 
+type cellsOutput struct {
+	Body []model.CellInfo
+}
+
+type cellOutput struct {
+	Body model.CellInfo
+}
+
+type cellAtInput struct {
+	Pool string `path:"pool" doc:"Pool name"`
+	X    int    `query:"x" required:"true" doc:"Block x coordinate"`
+	Z    int    `query:"z" required:"true" doc:"Block z coordinate"`
+}
+
 type maintenanceInput struct {
 	Pool string `path:"pool" doc:"Pool name"`
 	Body maintenanceBody
@@ -94,5 +108,30 @@ func (s *server) registerPools(api huma.API) {
 			return nil, mapError(s.log, err)
 		}
 		return &poolOutput{Body: pool}, nil
+	})
+
+	// Proxies resolve cells, so these routes need only instances:read, which instance tokens have.
+	huma.Register(api, operation(scopeInstancesRead, huma.Operation{
+		OperationID: "list-pool-cells", Method: http.MethodGet, Path: "/v1/pools/{pool}/cells",
+		Summary: "List the cells of a sharded pool with the instance that serves each",
+	}), func(ctx context.Context, in *poolPath) (*cellsOutput, error) {
+		cells, err := s.svc.PoolCells(ctx, in.Pool)
+		if err != nil {
+			return nil, mapError(s.log, err)
+		}
+		return &cellsOutput{Body: cells}, nil
+	})
+
+	huma.Register(api, operation(scopeInstancesRead, huma.Operation{
+		OperationID: "get-pool-cell-at", Method: http.MethodGet, Path: "/v1/pools/{pool}/cells/at",
+		Summary:     "Find the cell and instance that own a block position",
+		Description: "404 when no cell covers the block, 409 when the cell has no Ready instance yet.",
+		Errors:      []int{http.StatusNotFound, http.StatusConflict},
+	}), func(ctx context.Context, in *cellAtInput) (*cellOutput, error) {
+		cell, err := s.svc.CellAt(ctx, in.Pool, in.X, in.Z)
+		if err != nil {
+			return nil, mapError(s.log, err)
+		}
+		return &cellOutput{Body: cell}, nil
 	})
 }

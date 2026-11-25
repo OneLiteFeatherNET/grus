@@ -90,6 +90,11 @@ type Service interface {
 	// StopPrivateServer drains a private instance: it stops as soon as its players left.
 	StopPrivateServer(ctx context.Context, id string) (model.Instance, error)
 
+	// PoolCells lists the cells of a sharded pool with the instance serving each (ErrNotFound without sharding).
+	PoolCells(ctx context.Context, pool string) ([]model.CellInfo, error)
+	// CellAt resolves the block coordinates (x, z) to the cell and instance that own them.
+	CellAt(ctx context.Context, pool string, x, z int) (model.CellInfo, error)
+
 	// AuthenticateInstance maps a plain per-instance token to its live (non-terminal) instance.
 	AuthenticateInstance(ctx context.Context, token string) (model.Instance, error)
 	SelfReady(ctx context.Context, id string) (model.Instance, error)

@@ -126,6 +126,12 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 	}
 	errs = append(errs, c.stopIdlePrivate(ctx, insts, specs, unlisted, now)...)
 
+	// 3c. Region cells of sharded pools.
+	if insts, err = c.listAll(ctx); err != nil {
+		return err
+	}
+	errs = append(errs, c.assignCells(ctx, insts, specs, unlisted)...)
+
 	// 4. Autoscaling per pool.
 	if insts, err = c.listAll(ctx); err != nil {
 		return err
