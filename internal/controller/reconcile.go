@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/OneLiteFeatherNET/grus/internal/autoscale"
@@ -13,9 +14,17 @@ import (
 	"github.com/OneLiteFeatherNET/grus/internal/store"
 )
 
+// unlistedHostsError is returned by a multi-host driver when some hosts could not be listed (see
+// router.PartialListError). The instances of those hosts keep their state for this cycle.
+type unlistedHostsError interface {
+	error
+	FailedHosts() []string
+}
+
 // ReconcileOnce runs one reconcile cycle: observe, apply driver facts, clean up terminal records, drop
 // instances of deleted pools and scale every pool. Errors of single instances are collected and do not stop
-// the cycle; a failing driver List aborts it, so no instance is marked lost on a driver outage.
+// the cycle. A failing driver List aborts it, so no instance is marked lost on a driver outage; a partial
+// list skips only the instances of the hosts that could not be listed.
 func (c *Controller) ReconcileOnce(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -30,8 +39,16 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 		specs[p.Name] = p.Spec.WithDefaults()
 	}
 	observed, err := c.drv.List(ctx)
+	unlisted := map[string]bool{}
 	if err != nil {
-		return fmt.Errorf("list driver instances: %w", err)
+		var partial unlistedHostsError
+		if !errors.As(err, &partial) {
+			return fmt.Errorf("list driver instances: %w", err)
+		}
+		for _, host := range partial.FailedHosts() {
+			unlisted[host] = true
+		}
+		c.log.Warn("driver list partly failed, instances of these hosts keep their state", "hosts", partial.FailedHosts(), "error", err)
 	}
 	obsByID := make(map[string]driver.Observed, len(observed))
 	for _, o := range observed {
@@ -48,7 +65,7 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 
 	// 1. Driver facts and timeouts.
 	for _, inst := range insts {
-		if inst.State.Terminal() {
+		if inst.State.Terminal() || unlisted[hostOf(inst)] {
 			continue
 		}
 		var obs *driver.Observed
@@ -89,7 +106,7 @@ func (c *Controller) ReconcileOnce(ctx context.Context) error {
 		return err
 	}
 	for _, inst := range insts {
-		if inst.State.Terminal() || inst.State == model.StateStopping || inst.State == model.StateDraining {
+		if inst.State.Terminal() || inst.State == model.StateStopping || inst.State == model.StateDraining || unlisted[hostOf(inst)] {
 			continue
 		}
 		if _, ok := specs[inst.Pool]; ok {
@@ -285,6 +302,15 @@ func (c *Controller) listAll(ctx context.Context) ([]model.Instance, error) {
 		return nil, fmt.Errorf("list instances: %w", err)
 	}
 	return insts, nil
+}
+
+// hostOf returns the host an instance runs on. Refs of a router are "<host>/<ref>"; other drivers leave the
+// host in inst.Host.
+func hostOf(inst model.Instance) string {
+	if host, _, ok := strings.Cut(inst.DriverRef, "/"); ok {
+		return host
+	}
+	return inst.Host
 }
 
 func specFor(specs map[string]model.PoolSpec, name string) model.PoolSpec {

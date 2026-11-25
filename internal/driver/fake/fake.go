@@ -22,6 +22,8 @@ type Driver struct {
 	// StartErr, when set, makes Start fail with this error and record nothing.
 	// Set it before the code under test runs.
 	StartErr error
+	// ListErr, when set, makes List fail with this error. Set it before the code under test runs.
+	ListErr error
 
 	mu        sync.Mutex
 	host      string
@@ -112,6 +114,9 @@ func (d *Driver) List(_ context.Context) ([]driver.Observed, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	if d.ListErr != nil {
+		return nil, d.ListErr
+	}
 	out := make([]driver.Observed, 0, len(d.instances))
 	for _, ref := range slices.Sorted(maps.Keys(d.instances)) {
 		out = append(out, d.instances[ref])
