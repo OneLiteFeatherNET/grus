@@ -21,7 +21,7 @@
   "dependencies": {
     "@mdi/js": "^7.4.47",
     "@nuxtjs/i18n": "^10.6.0",
-    "@onelitefeathernet/pavo": "^0.2.0",
+    "@onelitefeathernet/pavo": "^0.3.0",
     "nuxt": "^4.7.0",
     "vue": "^3.5.46"
   },

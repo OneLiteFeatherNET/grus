@@ -10,15 +10,14 @@
           <span class="text-label-medium text-on-surface-variant" data-test="live-status">
             {{ $t(`common.live.${status}`) }}
           </span>
-          <M3Button
-            :variant="pool.maintenance ? 'tonal' : 'outlined'"
-            icon="mdi-wrench-outline"
+          <M3Switch
+            :model-value="pool.maintenance"
             :disabled="busyMaintenance"
             data-test="maintenance-toggle"
-            @click="maintenanceOpen = true"
+            @update:model-value="maintenanceOpen = true"
           >
-            {{ pool.maintenance ? $t('pools.maintenance.disable') : $t('pools.maintenance.enable') }}
-          </M3Button>
+            {{ $t('pools.badges.maintenance') }}
+          </M3Switch>
         </template>
       </M3PageHeader>
       <div v-if="pool.maintenance" class="-mt-4 mb-6">

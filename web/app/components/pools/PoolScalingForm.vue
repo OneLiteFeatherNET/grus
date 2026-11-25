@@ -1,31 +1,22 @@
 <template>
   <form novalidate data-test="scaling-form" @submit.prevent="onSubmit">
     <div class="grid gap-4 sm:grid-cols-2">
-      <div v-for="field in FIELDS" :key="field.key" class="flex min-w-0 flex-col gap-1">
-        <label :for="idOf(field.key)" class="text-label-large text-on-surface">
-          {{ $t(`pools.scaling.fields.${field.key}`) }}
-        </label>
-        <input
-          :id="idOf(field.key)"
-          :value="modelValue[field.key]"
-          :type="field.type"
-          :inputmode="field.inputmode"
-          :step="field.step"
-          :min="field.min"
-          :max="field.max"
-          :name="field.key"
-          :aria-invalid="shownError(field.key) ? 'true' : 'false'"
-          :aria-describedby="describedBy(field.key)"
-          class="w-full rounded-xs border border-outline bg-surface px-3 py-2 text-body-large text-on-surface focus:outline-2 focus:outline-primary aria-[invalid=true]:border-error"
-          @input="onInput(field.key, ($event.target as HTMLInputElement).value)"
-        >
-        <p v-if="shownError(field.key)" :id="errorIdOf(field.key)" class="text-body-small text-error">
-          {{ $t(`pools.scaling.errors.${shownError(field.key)}`) }}
-        </p>
-        <p v-else-if="field.hint" :id="hintIdOf(field.key)" class="text-body-small text-on-surface-variant">
-          {{ $t(`pools.scaling.hints.${field.hint}`) }}
-        </p>
-      </div>
+      <M3TextField
+        v-for="field in FIELDS"
+        :key="field.key"
+        :model-value="modelValue[field.key]"
+        :label="$t(`pools.scaling.fields.${field.key}`)"
+        :type="field.type"
+        :inputmode="field.inputmode"
+        :step="field.step"
+        :min="field.min"
+        :max="field.max"
+        :name="field.key"
+        :error="errorText(field.key)"
+        :hint="field.hint ? $t(`pools.scaling.hints.${field.hint}`) : ''"
+        class="min-w-0"
+        @update:model-value="value => onInput(field.key, String(value))"
+      />
     </div>
 
     <p v-if="dirty" class="mt-4 text-body-small text-on-surface-variant" data-test="scaling-unsaved">
@@ -44,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, useId } from 'vue'
+import { reactive, ref } from 'vue'
 import { validateScaling } from '~/lib/pools/scaling'
 import type { Scaling, ScalingError, ScalingField, ScalingForm } from '~/lib/pools/scaling'
 
@@ -80,28 +71,19 @@ const FIELDS: FieldSpec[] = [
   { key: 'maxSurge', type: 'number', inputmode: 'numeric', step: '1', min: '0', hint: 'optional' },
 ]
 
-const uid = useId()
+const { t } = useI18n()
 const touched = reactive<Partial<Record<ScalingField, boolean>>>({})
 const submitted = ref(false)
 
 const result = computed(() => validateScaling(props.modelValue, { mode: props.mode }))
 
-function idOf(field: ScalingField) {
-  return `${uid}-${field}`
-}
-function errorIdOf(field: ScalingField) {
-  return `${idOf(field)}-error`
-}
-function hintIdOf(field: ScalingField) {
-  return `${idOf(field)}-hint`
-}
 function shownError(field: ScalingField): ScalingError | undefined {
   const error = result.value.errors[field]
   return error && (touched[field] || submitted.value) ? error : undefined
 }
-function describedBy(field: ScalingField): string | undefined {
-  if (shownError(field)) return errorIdOf(field)
-  return FIELDS.find(f => f.key === field)?.hint ? hintIdOf(field) : undefined
+function errorText(field: ScalingField): string {
+  const error = shownError(field)
+  return error ? t(`pools.scaling.errors.${error}`) : ''
 }
 
 function onInput(field: ScalingField, value: string) {

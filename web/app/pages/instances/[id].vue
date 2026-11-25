@@ -68,17 +68,16 @@
         </M3Button>
 
         <form class="mt-4 flex flex-wrap items-end gap-2" @submit.prevent="sendCommand">
-          <label class="flex min-w-0 flex-1 flex-col gap-1 text-label-medium text-on-surface-variant">
-            {{ $t('instances.detail.commandLabel') }}
-            <input
-              v-model="command"
-              type="text"
-              autocomplete="off"
-              class="rounded-md border border-outline bg-surface-container px-3 py-2 font-mono text-body-medium text-on-surface"
-              :placeholder="$t('instances.detail.commandPlaceholder')"
-              data-test="command-input"
-            >
-          </label>
+          <M3TextField
+            v-model="command"
+            class="min-w-0 flex-1"
+            input-class="font-mono"
+            type="text"
+            autocomplete="off"
+            :label="$t('instances.detail.commandLabel')"
+            :placeholder="$t('instances.detail.commandPlaceholder')"
+            data-test="command-input"
+          />
           <M3Button type="submit" :disabled="!normalizedCommand || sending" :loading="sending">
             {{ $t('instances.detail.send') }}
           </M3Button>

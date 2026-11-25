@@ -1,40 +1,34 @@
 <template>
-  <div class="overflow-x-auto rounded-md bg-surface-container-low shadow-elevation-1">
-    <table class="w-full min-w-[44rem] text-left text-body-medium" data-test="pool-table">
-      <thead class="text-label-large text-on-surface-variant">
-        <tr>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.name') }}</th>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.role') }}</th>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.mode') }}</th>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.driver') }}</th>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.scaling') }}</th>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.instances') }}</th>
-          <th scope="col" class="px-4 py-3 font-medium">{{ $t('pools.table.maintenance') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="pool in pools" :key="pool.name" class="border-t border-outline-variant" data-test="pool-row">
-          <td class="px-4 py-3">
-            <NuxtLink :to="poolPath(pool.name)" class="font-medium text-primary hover:underline">{{ pool.name }}</NuxtLink>
-          </td>
-          <td class="px-4 py-3">{{ pool.spec.role }}</td>
-          <td class="px-4 py-3">{{ pool.spec.mode }}</td>
-          <td class="px-4 py-3">{{ pool.spec.driver }}</td>
-          <td class="px-4 py-3 tabular-nums">
-            {{ pool.spec.scaling.min }} / {{ pool.spec.scaling.max }} / {{ pool.spec.scaling.buffer ?? 0 }}
-          </td>
-          <td class="px-4 py-3 tabular-nums" data-test="pool-instances">
-            {{ countsOf(pool.name).ready }} / {{ countsOf(pool.name).total }}
-          </td>
-          <td class="px-4 py-3">
-            <M3Chip v-if="pool.maintenance" tone="warning" icon="mdi-wrench-outline" small>
-              {{ $t('pools.badges.maintenance') }}
-            </M3Chip>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <M3DataTable
+    :columns="columns"
+    :items="pools"
+    row-key="name"
+    :paginate="false"
+    :row-attrs="() => ({ 'data-test': 'pool-row' })"
+    data-test="pool-table"
+  >
+    <template #item.name="{ item }">
+      <NuxtLink :to="poolPath(item.name)" class="font-medium text-primary hover:underline">{{ item.name }}</NuxtLink>
+    </template>
+    <template #item.role="{ item }">{{ item.spec.role }}</template>
+    <template #item.mode="{ item }">{{ item.spec.mode }}</template>
+    <template #item.driver="{ item }">{{ item.spec.driver }}</template>
+    <template #item.scaling="{ item }">
+      <span class="tabular-nums">
+        {{ item.spec.scaling.min }} / {{ item.spec.scaling.max }} / {{ item.spec.scaling.buffer ?? 0 }}
+      </span>
+    </template>
+    <template #item.instances="{ item }">
+      <span class="tabular-nums" data-test="pool-instances">
+        {{ countsOf(item.name).ready }} / {{ countsOf(item.name).total }}
+      </span>
+    </template>
+    <template #item.maintenance="{ item }">
+      <M3Chip v-if="item.maintenance" tone="warning" icon="mdi-wrench-outline" small>
+        {{ $t('pools.badges.maintenance') }}
+      </M3Chip>
+    </template>
+  </M3DataTable>
 </template>
 
 <script setup lang="ts">
@@ -42,6 +36,17 @@ import type { Instance, Pool } from '~/lib/grus'
 import { poolCounts, poolPath } from '~/lib/pools/view'
 
 const props = defineProps<{ pools: Pool[], instances: Instance[] }>()
+const { t } = useI18n()
+
+const columns = computed(() => [
+  { key: 'name', title: t('pools.table.name'), sortable: false },
+  { key: 'role', title: t('pools.table.role'), sortable: false },
+  { key: 'mode', title: t('pools.table.mode'), sortable: false },
+  { key: 'driver', title: t('pools.table.driver'), sortable: false },
+  { key: 'scaling', title: t('pools.table.scaling'), sortable: false },
+  { key: 'instances', title: t('pools.table.instances'), sortable: false },
+  { key: 'maintenance', title: t('pools.table.maintenance'), sortable: false },
+])
 
 function countsOf(name: string) {
   return poolCounts(props.instances, name)
