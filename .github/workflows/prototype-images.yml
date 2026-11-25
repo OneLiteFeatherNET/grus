@@ -2,7 +2,8 @@ name: prototype-images
 
 # Manual prototype images for the feather-core deployment. Tags are prototype-<short sha>; releases are
 # not involved, so this does not wait for release-please. The controller image is built from the root
-# Dockerfile, the Velocity and Minestom images from the Docker contexts that Gradle writes.
+# Dockerfile, the web UI image from web/Dockerfile (same repository context), the Velocity and Minestom
+# images from the Docker contexts that Gradle writes.
 
 on:
   workflow_dispatch:
@@ -33,6 +34,20 @@ jobs:
       version: ${{ needs.meta.outputs.tag }}
       context: "."
       dockerfile: "Dockerfile"
+    secrets: inherit
+
+  grus-web:
+    name: Web UI image
+    needs: meta
+    permissions:
+      contents: read
+      id-token: write   # keyless cosign signing
+    uses: OneLiteFeatherNET/workflows/.github/workflows/docker-publish.yml@v2.9.1
+    with:
+      image-name: "onelitefeather/grus-web"
+      version: ${{ needs.meta.outputs.tag }}
+      context: "."
+      dockerfile: "web/Dockerfile"
     secrets: inherit
 
   java-context:
