@@ -1,0 +1,19 @@
+# Runs on the registered agent host mc01 outside Kubernetes.
+apiVersion: grus.onelitefeather.net/v1alpha1
+kind: Pool
+metadata:
+  name: mc01-lobby
+spec:
+  role: game
+  mode: dynamic
+  environment: minestom
+  groups: [lobby]
+  placement:
+    driver: agent
+    host: mc01
+  resources:
+    memoryMiB: 1024
+  scaling:
+    min: 1
+    max: 2
+    capacity: 20
