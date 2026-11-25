@@ -1,7 +1,9 @@
 import {
   mdiAlertCircleOutline,
+  mdiArrowLeft,
   mdiAlertOutline,
   mdiCheckCircleOutline,
+  mdiContentSaveOutline,
   mdiClose,
   mdiCubeOutline,
   mdiInformationOutline,
@@ -12,6 +14,7 @@ import {
   mdiTrayFull,
   mdiTranslate,
   mdiViewDashboardOutline,
+  mdiWrenchOutline,
   mdiWeatherNight,
   mdiWeatherSunny,
 } from '@mdi/js'
@@ -23,7 +26,9 @@ import {
 export const ICONS: Readonly<Record<string, string>> = {
   'mdi-alert-circle-outline': mdiAlertCircleOutline,
   'mdi-alert-outline': mdiAlertOutline,
+  'mdi-arrow-left': mdiArrowLeft,
   'mdi-check-circle-outline': mdiCheckCircleOutline,
+  'mdi-content-save-outline': mdiContentSaveOutline,
   'mdi-close': mdiClose,
   'mdi-cube-outline': mdiCubeOutline,
   'mdi-information-outline': mdiInformationOutline,
@@ -36,6 +41,7 @@ export const ICONS: Readonly<Record<string, string>> = {
   'mdi-view-dashboard-outline': mdiViewDashboardOutline,
   'mdi-weather-night': mdiWeatherNight,
   'mdi-weather-sunny': mdiWeatherSunny,
+  'mdi-wrench-outline': mdiWrenchOutline,
 }
 
 /** Path data for an icon name. Unknown names render an empty glyph instead of breaking the page. */
