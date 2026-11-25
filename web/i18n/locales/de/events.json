@@ -2,6 +2,41 @@
   "events": {
     "title": "Ereignisse",
     "subtitle": "Live-Strom der Controller-Ereignisse",
-    "placeholder": "Der Ereignisstrom folgt in Kürze"
+    "columns": {
+      "time": "Zeit",
+      "type": "Typ",
+      "subject": "Objekt",
+      "summary": "Ereignis"
+    },
+    "filterTypes": "Ereignistypen",
+    "filterText": "Suche",
+    "filterTextPlaceholder": "Pool, Instanz oder Text",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "pendingNew": "{count} neue",
+    "clear": "Leeren",
+    "showRaw": "Rohdaten anzeigen",
+    "empty": "Noch keine Ereignisse in dieser Sitzung",
+    "noMatch": "Kein Ereignis passt zum Filter",
+    "limit": "Der Browser hält bis zu {limit} Ereignisse",
+    "summary": {
+      "instanceState": "{from} → {to}",
+      "instanceStateReason": "{from} → {to} ({reason})",
+      "instanceCreated": "angelegt in Pool {pool}",
+      "instanceUpdated": "aktualisiert, Status {state}",
+      "instanceRemoved": "aus Pool {pool} entfernt",
+      "poolUpdated": "aktualisiert (Generation {generation})",
+      "poolMaintenanceOn": "Wartung eingeschaltet",
+      "poolMaintenanceOff": "Wartung ausgeschaltet",
+      "poolScaledUp": "skaliert hoch ({reason}) {current} → {desired}",
+      "poolScaledDown": "skaliert runter ({reason}) {current} → {desired}",
+      "templateTagged": "Tag {tag} gesetzt",
+      "unknown": "Ereignis {type}"
+    },
+    "line": {
+      "instance": "{subject}: {summary}",
+      "pool": "Pool {pool} {summary}",
+      "template": "Template {template}: Tag {tag} gesetzt"
+    }
   }
 }

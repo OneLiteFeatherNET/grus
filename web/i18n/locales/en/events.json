@@ -2,6 +2,41 @@
   "events": {
     "title": "Events",
     "subtitle": "Live stream of controller events",
-    "placeholder": "The event stream is coming soon"
+    "columns": {
+      "time": "Time",
+      "type": "Type",
+      "subject": "Subject",
+      "summary": "Event"
+    },
+    "filterTypes": "Event types",
+    "filterText": "Search",
+    "filterTextPlaceholder": "Pool, instance or text",
+    "pause": "Pause",
+    "resume": "Resume",
+    "pendingNew": "{count} new",
+    "clear": "Clear",
+    "showRaw": "Show raw data",
+    "empty": "No events in this session yet",
+    "noMatch": "No event matches the filter",
+    "limit": "The browser keeps up to {limit} events",
+    "summary": {
+      "instanceState": "{from} → {to}",
+      "instanceStateReason": "{from} → {to} ({reason})",
+      "instanceCreated": "created in pool {pool}",
+      "instanceUpdated": "updated, state {state}",
+      "instanceRemoved": "removed from pool {pool}",
+      "poolUpdated": "updated (generation {generation})",
+      "poolMaintenanceOn": "maintenance turned on",
+      "poolMaintenanceOff": "maintenance turned off",
+      "poolScaledUp": "scales up ({reason}) {current} → {desired}",
+      "poolScaledDown": "scales down ({reason}) {current} → {desired}",
+      "templateTagged": "tag {tag} set",
+      "unknown": "Event {type}"
+    },
+    "line": {
+      "instance": "{subject}: {summary}",
+      "pool": "Pool {pool} {summary}",
+      "template": "Template {template}: tag {tag} set"
+    }
   }
 }
