@@ -37,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * {@code GRUS_INSTANCE}, {@code GRUS_POOL}, {@code GRUS_ROLE}). Without {@code GRUS_URL} and
  * {@code GRUS_TOKEN} the plugin does nothing. {@code GRUS_FALLBACK_POOL} (default {@code lobby}) names the
  * pool that players fall back to, and {@code GRUS_MAX_PLAYERS} (default 500) is the proxy capacity.
+ * {@code GRUS_SHARD_POOL} enables {@code /region <x> <z>} for that sharded pool.
  */
 @Plugin(
         id = "grus",
@@ -48,6 +49,8 @@ public final class GrusVelocity {
 
     static final String ENV_FALLBACK_POOL = "GRUS_FALLBACK_POOL";
     static final String DEFAULT_FALLBACK_POOL = "lobby";
+    /** Pool whose region cells {@code /region} resolves; without it the command is not registered. */
+    static final String ENV_SHARD_POOL = "GRUS_SHARD_POOL";
     static final String ENV_MAX_PLAYERS = "GRUS_MAX_PLAYERS";
     static final int DEFAULT_MAX_PLAYERS = 500;
     /** Ready calls before giving up; with the default backoff this covers several minutes of controller outage. */
@@ -81,6 +84,7 @@ public final class GrusVelocity {
         EventStream stream = EventStream.start(config.get(),
                 List.of("instance.*", NetworkStatus.EVENT_TYPE),
                 new Listener(client, servers, network), Backoff.defaults());
+        registerRegionCommand(client);
         Thread.ofVirtual().name("grus-ready").start(() -> reportReady(client));
         reporter.start();
 
@@ -148,6 +152,17 @@ public final class GrusVelocity {
             Integration current, String excludedId) {
         return current.servers().fallbackTarget(current.fallbackPool(), excludedId)
                 .flatMap(instance -> proxy.getServer(instance.id()));
+    }
+
+    private void registerRegionCommand(GrusClient client) {
+        String pool = System.getenv(ENV_SHARD_POOL);
+        if (pool == null || pool.isBlank()) {
+            return;
+        }
+        var manager = proxy.getCommandManager();
+        manager.register(manager.metaBuilder("region").plugin(this).build(),
+                new RegionCommand(proxy, new RegionLookup(client, pool.trim()), logger));
+        logger.info("Grus /region command enabled for pool {}", pool.trim());
     }
 
     private void reportReady(GrusClient client) {

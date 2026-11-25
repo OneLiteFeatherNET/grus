@@ -130,6 +130,19 @@ public final class GrusClient {
         return read(send("POST", "/v1/self/shutdown", Map.of(), null), Instance.class);
     }
 
+    /**
+     * Sends an authenticated {@code GET} and returns the response body, for endpoints that have no typed method
+     * here yet.
+     *
+     * @param path  absolute path such as {@code /v1/pools/world/cells/at}
+     * @param query query parameters, encoded by this method
+     * @throws GrusException when the controller does not answer 2xx
+     */
+    public String get(String path, Map<String, String> query) {
+        Objects.requireNonNull(path, "path");
+        return send("GET", path, query, null);
+    }
+
     private String send(String method, String path, Map<String, String> query, byte[] json) {
         HttpRequest.BodyPublisher publisher = json == null
                 ? HttpRequest.BodyPublishers.noBody()
