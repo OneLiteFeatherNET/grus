@@ -2,7 +2,7 @@
 
 # Controller image: one static binary (cmd/grus) on distroless, running as the nonroot user.
 
-FROM golang:1.26.11-alpine AS build
+FROM golang:1.27.4-alpine AS build
 ARG VERSION=dev
 WORKDIR /src
 COPY go.mod go.sum* ./
