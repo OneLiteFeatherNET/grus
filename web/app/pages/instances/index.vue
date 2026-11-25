@@ -11,68 +11,47 @@
     <M3Problem :error="error" />
 
     <form class="mb-4 flex flex-wrap items-end gap-3" role="search" @submit.prevent>
-      <label class="flex flex-col gap-1 text-label-medium text-on-surface-variant">
-        {{ $t('instances.filter.pool') }}
-        <select
-          class="rounded-md border border-outline bg-surface-container px-3 py-2 text-body-medium text-on-surface"
-          data-test="filter-pool"
-          :value="query.pool ?? ''"
-          @change="update({ pool: ($event.target as HTMLSelectElement).value })"
-        >
-          <option value="">{{ $t('instances.filter.all') }}</option>
-          <option v-for="pool in poolOptions" :key="pool" :value="pool">{{ pool }}</option>
-        </select>
-      </label>
-      <label class="flex flex-col gap-1 text-label-medium text-on-surface-variant">
-        {{ $t('instances.filter.state') }}
-        <select
-          class="rounded-md border border-outline bg-surface-container px-3 py-2 text-body-medium text-on-surface"
-          data-test="filter-state"
-          :value="query.state ?? ''"
-          @change="update({ state: ($event.target as HTMLSelectElement).value })"
-        >
-          <option value="">{{ $t('instances.filter.all') }}</option>
-          <option v-for="state in INSTANCE_STATES" :key="state" :value="state">{{ $t(`instances.states.${state}`) }}</option>
-        </select>
-      </label>
+      <M3Select
+        :model-value="query.pool ?? ''"
+        :items="poolItems"
+        :label="$t('instances.filter.pool')"
+        data-test="filter-pool"
+        @update:model-value="pool => update({ pool: String(pool) })"
+      />
+      <M3Select
+        :model-value="query.state ?? ''"
+        :items="stateItems"
+        :label="$t('instances.filter.state')"
+        data-test="filter-state"
+        @update:model-value="state => update({ state: String(state) })"
+      />
     </form>
 
-    <div v-if="visible.length" class="overflow-x-auto rounded-xl border border-outline-variant">
-      <table class="w-full min-w-[40rem] text-left text-body-medium">
-        <thead class="bg-surface-container text-label-large text-on-surface-variant">
-          <tr>
-            <th scope="col" class="px-4 py-3" :aria-sort="ariaSort('name')">
-              <button type="button" class="font-medium" data-test="sort-name" @click="toggleSort('name')">
-                {{ $t('instances.columns.name') }}{{ sortMark('name') }}
-              </button>
-            </th>
-            <th scope="col" class="px-4 py-3">{{ $t('instances.columns.pool') }}</th>
-            <th scope="col" class="px-4 py-3">{{ $t('instances.columns.state') }}</th>
-            <th scope="col" class="px-4 py-3">{{ $t('instances.columns.address') }}</th>
-            <th scope="col" class="px-4 py-3">{{ $t('instances.columns.players') }}</th>
-            <th scope="col" class="px-4 py-3" :aria-sort="ariaSort('age')">
-              <button type="button" class="font-medium" data-test="sort-age" @click="toggleSort('age')">
-                {{ $t('instances.columns.age') }}{{ sortMark('age') }}
-              </button>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="inst in visible" :key="inst.id" class="border-t border-outline-variant" data-test="instance-row">
-            <td class="px-4 py-3">
-              <NuxtLink :to="`/instances/${encodeURIComponent(inst.id)}`" class="font-mono text-primary underline-offset-2 hover:underline">
-                {{ inst.id }}
-              </NuxtLink>
-            </td>
-            <td class="px-4 py-3">{{ inst.pool }}</td>
-            <td class="px-4 py-3"><StatusChip :state="inst.state" /></td>
-            <td class="px-4 py-3 font-mono text-body-small">{{ inst.address || inst.host }}</td>
-            <td class="px-4 py-3 tabular-nums">{{ inst.players }} / {{ inst.maxPlayers }}</td>
-            <td class="px-4 py-3 text-on-surface-variant">{{ ages.get(inst.id) ?? '' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <M3DataTable
+      v-if="visible.length"
+      :columns="columns"
+      :items="visible"
+      row-key="id"
+      data-test="instance-table"
+    >
+      <template #item.id="{ item }">
+        <NuxtLink :to="`/instances/${encodeURIComponent(item.id)}`" class="font-mono text-primary underline-offset-2 hover:underline">
+          {{ item.id }}
+        </NuxtLink>
+      </template>
+      <template #item.state="{ item }">
+        <StatusChip :state="item.state" />
+      </template>
+      <template #item.address="{ item }">
+        <span class="font-mono text-body-small">{{ item.address || item.host }}</span>
+      </template>
+      <template #item.players="{ item }">
+        <span class="tabular-nums">{{ item.players }} / {{ item.maxPlayers }}</span>
+      </template>
+      <template #item.age="{ item }">
+        <span class="text-on-surface-variant">{{ ages.get(item.id) ?? '' }}</span>
+      </template>
+    </M3DataTable>
     <M3EmptyState v-else-if="!pending && !error" :title="$t('instances.empty')" icon="mdi-cube-outline" />
   </div>
 </template>
@@ -89,7 +68,7 @@ import { INSTANCE_STATES } from '~/lib/states'
 const { status, onEvent, onResync } = useGrusEvents()
 const route = useRoute()
 const router = useRouter()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 const { data, error, pending, refresh } = await useAsyncData('instances', () => instancesApi.list())
 
@@ -100,6 +79,24 @@ const poolOptions = computed(() => {
   if (query.value.pool) pools.add(query.value.pool)
   return [...pools].sort()
 })
+const poolItems = computed(() => [
+  { value: '', title: t('instances.filter.all') },
+  ...poolOptions.value.map(pool => ({ value: pool, title: pool })),
+])
+const stateItems = computed(() => [
+  { value: '', title: t('instances.filter.all') },
+  ...INSTANCE_STATES.map(state => ({ value: state, title: t(`instances.states.${state}`) })),
+])
+
+// Only the name column is sortable in the table. The sort query parameters are not applied to it.
+const columns = computed(() => [
+  { key: 'id', title: t('instances.columns.name') },
+  { key: 'pool', title: t('instances.columns.pool'), sortable: false },
+  { key: 'state', title: t('instances.columns.state'), sortable: false },
+  { key: 'address', title: t('instances.columns.address'), sortable: false },
+  { key: 'players', title: t('instances.columns.players'), sortable: false },
+  { key: 'age', title: t('instances.columns.age'), sortable: false },
+])
 
 // "now" is only known in the browser; SSR renders no ages to avoid a hydration mismatch.
 const now = ref<number | null>(null)
@@ -131,21 +128,5 @@ onResync(() => void refresh())
 
 function update(patch: Partial<InstanceListQuery>) {
   void router.replace({ query: toInstanceRouteQuery({ ...query.value, ...patch }) })
-}
-
-function toggleSort(key: 'name' | 'age') {
-  const q = query.value
-  if (q.sort === key) update({ dir: q.dir === 'asc' ? 'desc' : 'asc' })
-  else update({ sort: key, dir: 'asc' })
-}
-
-function ariaSort(key: 'name' | 'age') {
-  if (query.value.sort !== key) return 'none'
-  return query.value.dir === 'asc' ? 'ascending' : 'descending'
-}
-
-function sortMark(key: 'name' | 'age') {
-  if (query.value.sort !== key) return ''
-  return query.value.dir === 'asc' ? ' ▲' : ' ▼'
 }
 </script>

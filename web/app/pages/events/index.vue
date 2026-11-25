@@ -39,47 +39,43 @@
           {{ type }}
         </button>
       </div>
-      <label class="flex max-w-md flex-col gap-1 text-label-medium text-on-surface-variant">
-        {{ $t('events.filterText') }}
-        <input
-          v-model="text"
-          type="search"
-          class="rounded-sm border border-outline-variant bg-surface px-3 py-2 text-body-large text-on-surface"
-          :placeholder="$t('events.filterTextPlaceholder')"
-          data-test="text-filter"
-        >
-      </label>
+      <M3TextField
+        v-model="text"
+        class="max-w-md"
+        type="search"
+        :label="$t('events.filterText')"
+        :placeholder="$t('events.filterTextPlaceholder')"
+        data-test="text-filter"
+      />
       <p class="text-label-medium text-on-surface-variant">{{ $t('events.limit', { limit: LOG_LIMIT }) }}</p>
     </section>
 
     <M3EmptyState v-if="!log.events.length" :title="$t('events.empty')" icon="mdi-timeline-text-outline" />
     <M3EmptyState v-else-if="!rows.length" :title="$t('events.noMatch')" icon="mdi-filter-off-outline" />
-    <div v-else class="overflow-x-auto rounded-md bg-surface-container-low">
-      <table class="w-full min-w-[40rem] text-left text-body-medium" data-test="events-table">
-        <thead class="text-label-large text-on-surface-variant">
-          <tr>
-            <th scope="col" class="px-3 py-2 font-medium">{{ $t('events.columns.time') }}</th>
-            <th scope="col" class="px-3 py-2 font-medium">{{ $t('events.columns.type') }}</th>
-            <th scope="col" class="px-3 py-2 font-medium">{{ $t('events.columns.subject') }}</th>
-            <th scope="col" class="px-3 py-2 font-medium">{{ $t('events.columns.summary') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.id" class="border-t border-outline-variant align-top" data-test="event-row">
-            <td class="whitespace-nowrap px-3 py-2 tabular-nums">{{ row.time }}</td>
-            <td class="px-3 py-2"><M3Chip :tone="row.tone" small>{{ row.type }}</M3Chip></td>
-            <td class="break-all px-3 py-2">{{ row.subject ?? '—' }}</td>
-            <td class="px-3 py-2">
-              {{ row.summary }}
-              <details class="mt-1">
-                <summary class="cursor-pointer text-label-medium text-primary">{{ $t('events.showRaw') }}</summary>
-                <pre class="mt-2 max-h-64 overflow-auto rounded-sm bg-surface p-2 text-label-medium">{{ row.raw }}</pre>
-              </details>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <M3DataTable
+      v-else
+      :columns="columns"
+      :items="rows"
+      row-key="id"
+      data-test="events-table"
+    >
+      <template #item.time="{ item }">
+        <span class="whitespace-nowrap tabular-nums">{{ item.time }}</span>
+      </template>
+      <template #item.type="{ item }">
+        <M3Chip :tone="item.tone" small>{{ item.type }}</M3Chip>
+      </template>
+      <template #item.subject="{ item }">
+        <span class="break-all">{{ item.subject ?? '—' }}</span>
+      </template>
+      <template #item.summary="{ item }">
+        {{ item.summary }}
+        <details class="mt-1">
+          <summary class="cursor-pointer text-label-medium text-primary">{{ $t('events.showRaw') }}</summary>
+          <pre class="mt-2 max-h-64 overflow-auto rounded-sm bg-surface p-2 text-label-medium">{{ item.raw }}</pre>
+        </details>
+      </template>
+    </M3DataTable>
   </div>
 </template>
 
@@ -102,6 +98,12 @@ const log = ref<LiveLog>(emptyLog())
 const typeFilter = ref<string[]>([])
 const text = ref('')
 const paused = computed(() => isPaused(log.value))
+const columns = computed(() => [
+  { key: 'time', title: t('events.columns.time'), sortable: false },
+  { key: 'type', title: t('events.columns.type'), sortable: false },
+  { key: 'subject', title: t('events.columns.subject'), sortable: false },
+  { key: 'summary', title: t('events.columns.summary'), sortable: false },
+])
 
 const filter = computed<EventFilter>(() => ({ types: typeFilter.value, text: text.value }))
 const translate: Translate = (key, params) => t(key, params ?? {})
