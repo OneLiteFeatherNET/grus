@@ -332,3 +332,10 @@ func (c *Client) PrivateServers(ctx context.Context, owner string) ([]Object, er
 	}
 	return out, err
 }
+
+// Cells lists the cells of a sharded pool with the instance that serves each.
+func (c *Client) Cells(ctx context.Context, pool string) ([]Object, error) {
+	var out []Object
+	err := c.call(ctx, http.MethodGet, "/v1/pools/"+url.PathEscape(pool)+"/cells", nil, nil, &out)
+	return out, err
+}
