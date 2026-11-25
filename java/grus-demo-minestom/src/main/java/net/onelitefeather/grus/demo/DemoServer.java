@@ -12,13 +12,24 @@ import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.block.Block;
 import net.onelitefeather.grus.minestom.GrusMinestom;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+
 /**
- * Minimal lobby for the Grus prototype: a flat world, Velocity modern forwarding when
- * {@code VELOCITY_SECRET} is set, a {@code /hub} command, and the Grus integration.
+ * Minimal lobby for the Grus prototype: a flat world, Velocity modern forwarding when a secret is
+ * configured, a {@code /hub} command, and the Grus integration.
  *
  * <p>Environment: {@code GRUS_PORT} (default 25565), {@code GRUS_INSTANCE} (shown in the welcome
- * message), {@code VELOCITY_SECRET} (optional), plus the {@code GRUS_*} variables read by
- * {@link GrusMinestom}.
+ * message), {@code VELOCITY_SECRET} (optional forwarding secret), {@code VELOCITY_SECRET_FILE}
+ * (optional path, relative to the working directory, to a file holding the secret; used when
+ * {@code VELOCITY_SECRET} is empty and fails startup if the file cannot be read), plus the
+ * {@code GRUS_*} variables read by {@link GrusMinestom}.
  */
 public final class DemoServer {
 
@@ -28,10 +39,10 @@ public final class DemoServer {
     }
 
     public static void main(String[] args) {
-        String velocitySecret = System.getenv("VELOCITY_SECRET");
-        MinecraftServer server = velocitySecret == null || velocitySecret.isEmpty()
-                ? MinecraftServer.init()
-                : MinecraftServer.init(new Auth.Velocity(velocitySecret));
+        Optional<String> velocitySecret = velocitySecret(System.getenv(), DemoServer::readSecretFile);
+        MinecraftServer server = velocitySecret.isPresent()
+                ? MinecraftServer.init(new Auth.Velocity(velocitySecret.get()))
+                : MinecraftServer.init();
 
         // SIGTERM (docker stop, kubelet) runs the shutdown hook, which saves and disconnects players.
         Runtime.getRuntime().addShutdownHook(new Thread(MinecraftServer::stopCleanly, "grus-demo-shutdown"));
@@ -64,6 +75,43 @@ public final class DemoServer {
         server.start("0.0.0.0", port);
 
         GrusMinestom.install().ifPresent(GrusMinestom::ready);
+    }
+
+    /**
+     * Resolves the Velocity forwarding secret. {@code VELOCITY_SECRET} wins when set and non-empty;
+     * otherwise a set {@code VELOCITY_SECRET_FILE} is read through {@code readFile} and stripped.
+     * A requested file that cannot be read or is blank is an error, so the server never starts
+     * without forwarding when a secret was asked for.
+     */
+    static Optional<String> velocitySecret(Map<String, String> env, Function<Path, String> readFile) {
+        String secret = env.get("VELOCITY_SECRET");
+        if (secret != null && !secret.isEmpty()) {
+            return Optional.of(secret);
+        }
+        String file = env.get("VELOCITY_SECRET_FILE");
+        if (file == null || file.isEmpty()) {
+            return Optional.empty();
+        }
+        Path path = Path.of(file);
+        String content;
+        try {
+            content = readFile.apply(path);
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("VELOCITY_SECRET_FILE is set but cannot be read: " + path, e);
+        }
+        String stripped = content == null ? "" : content.strip();
+        if (stripped.isEmpty()) {
+            throw new IllegalStateException("VELOCITY_SECRET_FILE is empty: " + path);
+        }
+        return Optional.of(stripped);
+    }
+
+    private static String readSecretFile(Path path) {
+        try {
+            return Files.readString(path, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static int parsePort(String raw) {
