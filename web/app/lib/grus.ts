@@ -30,7 +30,7 @@ export function withQuery(path: string, query: Record<string, string | undefined
 
 /** Typed, thin client for the Grus API as seen through the BFF. Add one method per endpoint a page needs. */
 export function createGrusClient(request: Requester) {
-  const url = (path: string, query?: Record<string, string | undefined>) => withQuery(`${GRUS_BASE}${path}`, query)
+  const url = bffUrl
   return {
     listPools: () => request(url('/v1/pools'), { method: 'GET' }) as Promise<Pool[]>,
     getPool: (name: string) => request(url(`/v1/pools/${encodeURIComponent(name)}`), { method: 'GET' }) as Promise<Pool>,
@@ -40,12 +40,23 @@ export function createGrusClient(request: Requester) {
   }
 }
 
-/** Browser client: $fetch against the BFF; every failure is normalised to ApiError or NetworkError. */
-export const grus = createGrusClient(async (url, options) => {
+/** Same-origin URL of an API path below the BFF, with optional query parameters. */
+export function bffUrl(path: string, query?: Record<string, string | undefined>): string {
+  return withQuery(`${GRUS_BASE}${path}`, query)
+}
+
+/**
+ * Browser requester: $fetch against the BFF; every failure is normalised to ApiError or NetworkError.
+ * Area clients in app/lib/api/ build on it the same way createGrusClient does.
+ */
+export const browserRequest: Requester = async (url, options) => {
   try {
     return await $fetch(url, { method: options.method, body: options.body as BodyInit | undefined })
   }
   catch (err) {
     throw toClientError(err)
   }
-})
+}
+
+/** Browser client for the endpoints shared by several pages. */
+export const grus = createGrusClient(browserRequest)
