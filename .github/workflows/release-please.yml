@@ -4,6 +4,8 @@ name: release-please
 # main; when it is merged, the release is created and tagged. Tags created with GITHUB_TOKEN start no
 # workflow, so nothing here listens for a tag push.
 #
+# The command line binaries are published by the cli workflow, called below with the new tag.
+#
 # Prototype: this workflow does not publish images or SBOMs yet. Docker publishing on release comes
 # later, once the controller leaves the prototype stage; until then the prototype-images workflow
 # builds the images on demand.
@@ -19,3 +21,13 @@ permissions:
 jobs:
   release-please:
     uses: OneLiteFeatherNET/workflows/.github/workflows/release-please.yml@v2.9.1
+
+  cli:
+    name: cli
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/cli.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
