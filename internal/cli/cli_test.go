@@ -160,15 +160,24 @@ func TestGetGroupsOnOldControllerSaysNotSupported(t *testing.T) {
 	}
 }
 
-func TestGetHostsOnNewerController(t *testing.T) {
+func TestGetHostsShowsAddressPortsAndState(t *testing.T) {
 	mux := apiMux(t)
 	mux.HandleFunc("GET /v1/hosts", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `[{"name":"mc01","version":"2.0.0","capacity":{"memoryMiB":16384},"addresses":["10.1.1.1"]}]`)
+		io.WriteString(w, `[{"name":"mc01","version":"58123e1","address":"10.200.2.35","portRange":"30000-30100","capacity":{},"lastSeen":"2026-11-25T10:00:00Z","online":true,"instances":0}]`)
 	})
 	h := newHarness(t, mux)
 	out := h.ok("", "get", "hosts")
-	if !strings.Contains(out, "mc01") || !strings.Contains(out, "16384") {
-		t.Errorf("hosts:\n%s", out)
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("hosts want header and one row, got:\n%s", out)
+	}
+	wantHead := []string{"NAME", "VERSION", "ADDRESS", "PORTS", "ONLINE", "INSTANCES", "LAST-SEEN"}
+	if got := strings.Fields(lines[0]); strings.Join(got, " ") != strings.Join(wantHead, " ") {
+		t.Errorf("header = %v, want %v", got, wantHead)
+	}
+	wantRow := []string{"mc01", "58123e1", "10.200.2.35", "30000-30100", "true", "0", "2026-11-25T10:00:00Z"}
+	if got := strings.Fields(lines[1]); strings.Join(got, " ") != strings.Join(wantRow, " ") {
+		t.Errorf("row = %v, want %v", got, wantRow)
 	}
 }
 
