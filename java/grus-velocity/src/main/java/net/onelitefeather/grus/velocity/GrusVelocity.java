@@ -8,6 +8,7 @@ import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.KickedFromServerEvent;
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyPingEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -20,6 +21,7 @@ import net.onelitefeather.grus.sdk.GrusEvent;
 import net.onelitefeather.grus.sdk.GrusException;
 import net.onelitefeather.grus.sdk.Instance;
 import net.onelitefeather.grus.sdk.InstanceStateChange;
+import net.onelitefeather.grus.sdk.NetworkStatus;
 import net.onelitefeather.grus.sdk.SelfReporter;
 import org.slf4j.Logger;
 
@@ -70,17 +72,19 @@ public final class GrusVelocity {
         }
         GrusClient client = new GrusClient(config.get());
         GameServers servers = new GameServers(new VelocityProxyRegistry(proxy));
+        NetworkPlayers network = new NetworkPlayers();
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
                 Thread.ofPlatform().name("grus-self-reporter").daemon(true).factory());
         SelfReporter reporter = new SelfReporter(client, proxy::getPlayerCount, maxPlayersFromEnv(), scheduler);
 
         // The stream starts first; its onConnected callback runs the full sync once the connection is up.
-        EventStream stream = EventStream.start(config.get(), List.of("instance.*"), new Listener(client, servers),
-                Backoff.defaults());
+        EventStream stream = EventStream.start(config.get(),
+                List.of("instance.*", NetworkStatus.EVENT_TYPE),
+                new Listener(client, servers, network), Backoff.defaults());
         Thread.ofVirtual().name("grus-ready").start(() -> reportReady(client));
         reporter.start();
 
-        integration = new Integration(servers, reporter, stream, scheduler, fallbackPool());
+        integration = new Integration(servers, network, reporter, stream, scheduler, fallbackPool());
         logger.info("Grus integration enabled for instance {}", config.get().instance());
     }
 
@@ -99,6 +103,17 @@ public final class GrusVelocity {
         if (current != null) {
             current.reporter().trigger();
         }
+    }
+
+    /** Shows the network-wide count in the server list; the max player count stays as Velocity has it. */
+    @Subscribe
+    public void onProxyPing(ProxyPingEvent event) {
+        Integration current = integration;
+        if (current == null) {
+            return;
+        }
+        int shown = NetworkPlayers.shownOnline(current.network().players(), proxy.getPlayerCount());
+        event.setPing(event.getPing().asBuilder().onlinePlayers(shown).build());
     }
 
     @Subscribe
@@ -144,11 +159,21 @@ public final class GrusVelocity {
         }
     }
 
-    private void fullSync(GrusClient client, GameServers servers) {
+    private void fullSync(GrusClient client, GameServers servers, NetworkPlayers network) {
         try {
             servers.sync(client.instances(null, null, GameServers.ROLE_GAME));
         } catch (GrusException e) {
             logger.warn("Grus full sync failed with status {}: {}", e.status(), e.getMessage());
+        }
+        refreshNetwork(client, network);
+    }
+
+    /** Keeps the cached network count when the controller has no endpoint for it (404 leaves it unchanged). */
+    private void refreshNetwork(GrusClient client, NetworkPlayers network) {
+        try {
+            client.network().ifPresent(network::update);
+        } catch (GrusException e) {
+            logger.warn("Grus network count refresh failed with status {}: {}", e.status(), e.getMessage());
         }
     }
 
@@ -179,10 +204,12 @@ public final class GrusVelocity {
 
         private final GrusClient client;
         private final GameServers servers;
+        private final NetworkPlayers network;
 
-        Listener(GrusClient client, GameServers servers) {
+        Listener(GrusClient client, GameServers servers, NetworkPlayers network) {
             this.client = client;
             this.servers = servers;
+            this.network = network;
         }
 
         @Override
@@ -190,6 +217,7 @@ public final class GrusVelocity {
             switch (event.type()) {
                 case "instance.state" -> servers.applyStateChange(InstanceStateChange.from(event));
                 case "instance.created", "instance.updated" -> servers.applyInstance(Instance.from(event));
+                case NetworkStatus.EVENT_TYPE -> network.update(NetworkStatus.from(event));
                 case "instance.removed" -> {
                     JsonNode id = event.data().get("instance");
                     if (id != null && id.isTextual()) {
@@ -204,18 +232,19 @@ public final class GrusVelocity {
 
         @Override
         public void onResync() {
-            fullSync(client, servers);
+            fullSync(client, servers, network);
         }
 
         @Override
         public void onConnected() {
-            fullSync(client, servers);
+            fullSync(client, servers, network);
         }
     }
 
     /** Everything that exists only while the integration is enabled. */
     private record Integration(
             GameServers servers,
+            NetworkPlayers network,
             SelfReporter reporter,
             EventStream stream,
             ScheduledExecutorService scheduler,

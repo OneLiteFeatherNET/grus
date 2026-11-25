@@ -142,6 +142,7 @@ public final class GameServers {
         registry.registerServer(id, target);
         owned.put(id, address);
         LOG.info("registered {} at {}", id, address);
+        registry.pingOnce(id);
     }
 
     private void unregister(String id) {
