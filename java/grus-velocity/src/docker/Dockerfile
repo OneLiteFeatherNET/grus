@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.29
 FROM eclipse-temurin:25.0.5.1_2-jre
 
 # BuildKit applies ADD --chmod to parent directories it creates, which made /opt/velocity 0644 and
