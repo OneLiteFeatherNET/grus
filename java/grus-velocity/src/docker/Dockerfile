@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM eclipse-temurin:25.0.3_9-jre
+FROM eclipse-temurin:25.0.5.1_2-jre
 
 # BuildKit applies ADD --chmod to parent directories it creates, which made /opt/velocity 0644 and
 # unsearchable for the runtime user. Create the directory first with an explicit mode.
