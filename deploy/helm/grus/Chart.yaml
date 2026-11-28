@@ -4,8 +4,8 @@ description: Grus controller - minimal control plane that runs and scales game s
 type: application
 # Both markers are rewritten by release-please, so the chart version and the
 # controller image it deploys come from the same release.
-version: "0.0.0" # x-release-please-version
-appVersion: "0.0.0" # x-release-please-version
+version: "1.0.0" # x-release-please-version
+appVersion: "1.0.0" # x-release-please-version
 home: https://github.com/OneLiteFeatherNET/grus
 sources:
   - https://github.com/OneLiteFeatherNET/grus
