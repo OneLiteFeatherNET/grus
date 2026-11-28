@@ -1,6 +1,6 @@
 [versions]
 jackson = "2.23.0"
-junit = "5.14.5"
+junit = "6.0.0"
 minestom = "2026.10.07-26.2"
 shadow = "9.6.1"
 velocity = "4.3.1"
